@@ -1,6 +1,6 @@
 # Rust
 /target/
-Cargo.lock
+# Cargo.lock is intentionally committed for binary crates (required by Clever Cloud --locked build)
 
 # Environment
 .env
