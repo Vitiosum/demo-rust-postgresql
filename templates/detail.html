@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}{{ incident.title }}{% endblock %}
+
+{% block content %}
+<a href="/" class="back-link">← Back to incidents</a>
+
+<div class="detail-header">
+  <div>
+    <h1 style="margin-bottom:8px">{{ incident.title }}</h1>
+    <div class="detail-badges">
+      <span class="badge {{ incident.severity_class() }}">{{ incident.severity }}</span>
+      <span class="badge {{ incident.status_class() }}">{{ incident.status }}</span>
+    </div>
+  </div>
+
+  <form class="status-form" method="post" action="/incidents/{{ incident.id }}/status">
+    <select name="status">
+      <option value="open"{% if incident.status == "open" %} selected{% endif %}>Open</option>
+      <option value="investigating"{% if incident.status == "investigating" %} selected{% endif %}>Investigating</option>
+      <option value="resolved"{% if incident.status == "resolved" %} selected{% endif %}>Resolved</option>
+    </select>
+    <button type="submit" class="btn btn-ghost btn-sm">Update status</button>
+  </form>
+</div>
+
+{% if incident.has_description() %}
+<div class="card desc-card">
+  <p class="field-label">Description</p>
+  <p class="desc-text" style="margin-top:8px">{{ incident.description_text() }}</p>
+</div>
+{% endif %}
+
+<div class="detail-grid">
+  <div class="card detail-field">
+    <p class="field-label">Service</p>
+    <p class="field-value">{{ incident.service }}</p>
+  </div>
+  <div class="card detail-field">
+    <p class="field-label">Severity</p>
+    <p class="field-value"><span class="badge {{ incident.severity_class() }}">{{ incident.severity }}</span></p>
+  </div>
+  <div class="card detail-field">
+    <p class="field-label">Created</p>
+    <p class="field-value" style="color:#71717a;font-size:13px">{{ incident.created_str() }}</p>
+  </div>
+  <div class="card detail-field">
+    <p class="field-label">Last updated</p>
+    <p class="field-value" style="color:#71717a;font-size:13px">{{ incident.updated_str() }}</p>
+  </div>
+  <div class="card detail-field" style="grid-column:1/-1">
+    <p class="field-label">Incident ID</p>
+    <p class="field-value" style="font-family:monospace;font-size:12px;color:#52525b">{{ incident.id }}</p>
+  </div>
+</div>
+{% endblock %}

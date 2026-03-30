@@ -1,0 +1,20 @@
+# Rust
+/target/
+Cargo.lock
+
+# Environment
+.env
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# macOS
+.DS_Store
+
+# SQLx offline query cache (enable if needed)
+# .sqlx/
+
+# Clever Cloud
+.clever.json

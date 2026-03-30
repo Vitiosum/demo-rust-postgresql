@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}Stats{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Statistics</h1>
+</div>
+
+<div class="stats-grid">
+  <div class="card stat-card stat-total">
+    <div class="stat-value">{{ stats.total }}</div>
+    <div class="stat-label">Total incidents</div>
+  </div>
+  <div class="card stat-card stat-open">
+    <div class="stat-value">{{ stats.open }}</div>
+    <div class="stat-label">Open</div>
+  </div>
+  <div class="card stat-card stat-invest">
+    <div class="stat-value">{{ stats.investigating }}</div>
+    <div class="stat-label">Investigating</div>
+  </div>
+  <div class="card stat-card stat-resolved">
+    <div class="stat-value">{{ stats.resolved }}</div>
+    <div class="stat-label">Resolved</div>
+  </div>
+  <div class="card stat-card stat-critical">
+    <div class="stat-value">{{ stats.critical }}</div>
+    <div class="stat-label">Critical severity</div>
+  </div>
+</div>
+
+<div style="margin-top:8px">
+  <a href="/" class="btn btn-ghost">← View all incidents</a>
+</div>
+
+<div class="cert-banner">
+  <span class="cert-icon">🎓</span>
+  <div class="cert-content">
+    <div class="cert-title">Envie de maîtriser Clever Cloud ?</div>
+    <div class="cert-sub">Validez vos compétences avec la certification officielle.</div>
+  </div>
+  <a class="cert-btn" href="https://academy.clever.cloud/" target="_blank" rel="noopener">Obtenir la certification →</a>
+</div>
+{% endblock %}

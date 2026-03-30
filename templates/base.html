@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Incident Tracker{% endblock %} · Clever Cloud</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #09090b;
+      color: #e4e4e7;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 14px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    a { color: inherit; text-decoration: none; }
+
+    /* ── Navbar ── */
+    .navbar {
+      background: rgba(9,9,11,0.95);
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(8px);
+    }
+    .nav-inner {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 0 20px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      color: #f4f4f5;
+    }
+    .brand-dot {
+      width: 8px; height: 8px;
+      background: #00ADD8;
+      border-radius: 50%;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(.85)} }
+
+    .nav-links { display: flex; align-items: center; gap: 6px; }
+    .nav-link {
+      padding: 6px 12px;
+      border-radius: 8px;
+      color: #a1a1aa;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all .15s;
+    }
+    .nav-link:hover { background: rgba(255,255,255,.06); color: #f4f4f5; }
+    .nav-link.active { color: #f4f4f5; background: rgba(255,255,255,.08); }
+    .btn-new {
+      background: #00ADD8;
+      color: #09090b !important;
+      font-weight: 600 !important;
+      padding: 6px 14px;
+    }
+    .btn-new:hover { background: #00c4f5 !important; }
+
+    /* ── Layout ── */
+    .main { flex: 1; }
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 32px 20px;
+    }
+
+    /* ── Page header ── */
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    h1 { font-size: 22px; font-weight: 600; color: #f4f4f5; }
+    h2 { font-size: 16px; font-weight: 600; color: #f4f4f5; }
+
+    /* ── Filters ── */
+    .filters { display: flex; gap: 6px; flex-wrap: wrap; }
+    .filter-tab {
+      padding: 5px 14px;
+      border-radius: 99px;
+      border: 1px solid rgba(255,255,255,.1);
+      background: transparent;
+      color: #71717a;
+      font-size: 13px;
+      transition: all .15s;
+    }
+    .filter-tab:hover { border-color: rgba(255,255,255,.2); color: #a1a1aa; }
+    .filter-tab.active {
+      background: rgba(0,173,216,.15);
+      border-color: rgba(0,173,216,.4);
+      color: #00ADD8;
+      font-weight: 500;
+    }
+
+    /* ── Cards ── */
+    .card {
+      background: rgba(24,24,27,.6);
+      border: 1px solid rgba(255,255,255,.07);
+      border-radius: 12px;
+      padding: 16px 20px;
+      transition: border-color .15s;
+    }
+    .card:hover { border-color: rgba(255,255,255,.13); }
+
+    /* ── Incident list ── */
+    .incident-list { display: flex; flex-direction: column; gap: 8px; }
+    .incident-card {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .incident-main { flex: 1; min-width: 0; }
+    .incident-title {
+      font-size: 14px;
+      font-weight: 500;
+      color: #f4f4f5;
+      margin-bottom: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .incident-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .service-tag {
+      font-size: 11px;
+      color: #71717a;
+      background: rgba(255,255,255,.05);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 4px;
+      padding: 1px 6px;
+    }
+    .incident-date { font-size: 11px; color: #52525b; }
+    .incident-badges { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+
+    /* ── Badges ── */
+    .badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      padding: 2px 8px;
+      border-radius: 99px;
+    }
+    .badge-critical { background: rgba(239,68,68,.15);  border: 1px solid rgba(239,68,68,.35);  color: #f87171; }
+    .badge-high     { background: rgba(249,115,22,.15); border: 1px solid rgba(249,115,22,.35); color: #fb923c; }
+    .badge-medium   { background: rgba(245,158,11,.15); border: 1px solid rgba(245,158,11,.35); color: #fbbf24; }
+    .badge-low      { background: rgba(34,197,94,.15);  border: 1px solid rgba(34,197,94,.35);  color: #4ade80; }
+
+    .badge-open         { background: rgba(239,68,68,.15);  border: 1px solid rgba(239,68,68,.3);  color: #f87171; }
+    .badge-investigating{ background: rgba(245,158,11,.15); border: 1px solid rgba(245,158,11,.3); color: #fbbf24; }
+    .badge-resolved     { background: rgba(34,197,94,.15);  border: 1px solid rgba(34,197,94,.3);  color: #4ade80; }
+
+    /* ── Empty state ── */
+    .empty {
+      text-align: center;
+      padding: 60px 20px;
+      color: #52525b;
+    }
+    .empty p { margin-top: 8px; font-size: 13px; }
+
+    /* ── Forms ── */
+    .form-card { max-width: 560px; }
+    .form-group { margin-bottom: 18px; }
+    label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: #71717a;
+      margin-bottom: 6px;
+    }
+    input[type="text"],
+    textarea,
+    select {
+      width: 100%;
+      background: rgba(24,24,27,.8);
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 8px;
+      color: #f4f4f5;
+      font-size: 14px;
+      font-family: inherit;
+      padding: 9px 12px;
+      transition: border-color .15s, box-shadow .15s;
+      appearance: none;
+    }
+    input[type="text"]:focus,
+    textarea:focus,
+    select:focus {
+      outline: none;
+      border-color: rgba(0,173,216,.5);
+      box-shadow: 0 0 0 3px rgba(0,173,216,.12);
+    }
+    textarea { resize: vertical; min-height: 90px; }
+    select option { background: #18181b; }
+
+    .form-hint { font-size: 11px; color: #52525b; margin-top: 4px; }
+    .form-error {
+      background: rgba(239,68,68,.1);
+      border: 1px solid rgba(239,68,68,.3);
+      border-radius: 8px;
+      color: #f87171;
+      font-size: 13px;
+      padding: 10px 14px;
+      margin-bottom: 16px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 9px 18px;
+      transition: all .15s;
+    }
+    .btn-primary {
+      background: #00ADD8;
+      color: #09090b;
+    }
+    .btn-primary:hover { background: #00c4f5; }
+    .btn-ghost {
+      background: rgba(255,255,255,.06);
+      color: #a1a1aa;
+      border: 1px solid rgba(255,255,255,.1);
+    }
+    .btn-ghost:hover { background: rgba(255,255,255,.1); color: #f4f4f5; }
+    .btn-sm { padding: 5px 12px; font-size: 12px; }
+
+    /* ── Status update form ── */
+    .status-form { display: flex; align-items: center; gap: 8px; }
+    .status-form select { width: auto; }
+
+    /* ── Detail page ── */
+    .detail-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .detail-badges { display: flex; gap: 6px; flex-wrap: wrap; }
+    .detail-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    @media (max-width: 600px) { .detail-grid { grid-template-columns: 1fr; } }
+    .detail-field { padding: 12px 16px; }
+    .field-label { font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #52525b; margin-bottom: 4px; }
+    .field-value { font-size: 14px; color: #e4e4e7; }
+    .desc-card { padding: 16px; margin-bottom: 8px; }
+    .desc-text { color: #a1a1aa; line-height: 1.6; white-space: pre-wrap; }
+
+    /* ── Stats ── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .stat-card { padding: 20px; text-align: center; }
+    .stat-value { font-size: 36px; font-weight: 300; line-height: 1; margin-bottom: 6px; }
+    .stat-label { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #52525b; }
+    .stat-total  .stat-value { color: #00ADD8; }
+    .stat-open   .stat-value { color: #f87171; }
+    .stat-invest .stat-value { color: #fbbf24; }
+    .stat-resolved .stat-value { color: #4ade80; }
+    .stat-critical .stat-value { color: #f87171; }
+
+    /* ── Back link ── */
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      color: #71717a;
+      font-size: 13px;
+      margin-bottom: 20px;
+      transition: color .15s;
+    }
+    .back-link:hover { color: #a1a1aa; }
+
+    /* ── Cert banner ── */
+    .cert-banner {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      background: rgba(251,191,36,.07);
+      border: 1px solid rgba(251,191,36,.25);
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-top: 32px;
+    }
+    .cert-icon { font-size: 24px; flex-shrink: 0; }
+    .cert-content { flex: 1; }
+    .cert-title  { font-size: 14px; font-weight: 600; color: #fbbf24; margin-bottom: 2px; }
+    .cert-sub    { font-size: 12px; color: #78716c; }
+    .cert-btn {
+      background: #fbbf24;
+      border-radius: 8px;
+      color: #1c1917;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 8px 14px;
+      white-space: nowrap;
+      flex-shrink: 0;
+      transition: background .15s;
+    }
+    .cert-btn:hover { background: #f59e0b; }
+    @media (max-width: 540px) { .cert-banner { flex-direction: column; text-align: center; } }
+
+    /* ── Footer ── */
+    .footer {
+      border-top: 1px solid rgba(255,255,255,.06);
+      padding: 16px 20px;
+      text-align: center;
+      font-size: 11px;
+      color: #3f3f46;
+    }
+    .footer a { color: #52525b; }
+    .footer a:hover { color: #71717a; }
+  </style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="nav-inner">
+    <a href="/" class="nav-brand">
+      <span class="brand-dot"></span>
+      Incident Tracker
+    </a>
+    <div class="nav-links">
+      <a href="/"             class="nav-link">Incidents</a>
+      <a href="/stats"        class="nav-link">Stats</a>
+      <a href="/health"       class="nav-link">Health</a>
+      <a href="/incidents/new" class="nav-link btn-new">+ New</a>
+    </div>
+  </div>
+</nav>
+
+<main class="main">
+  <div class="container">
+    {% block content %}{% endblock %}
+  </div>
+</main>
+
+<footer class="footer">
+  Incident Tracker &middot; Deployed on <a href="https://www.clever-cloud.com" target="_blank">Clever Cloud</a>
+</footer>
+
+</body>
+</html>

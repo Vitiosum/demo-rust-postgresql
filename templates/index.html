@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}Incidents{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Incidents</h1>
+  <div class="filters">
+    <a href="/"                     class="filter-tab{% if filter == "" %} active{% endif %}">All</a>
+    <a href="/?status=open"         class="filter-tab{% if filter == "open" %} active{% endif %}">Open</a>
+    <a href="/?status=investigating" class="filter-tab{% if filter == "investigating" %} active{% endif %}">Investigating</a>
+    <a href="/?status=resolved"     class="filter-tab{% if filter == "resolved" %} active{% endif %}">Resolved</a>
+  </div>
+</div>
+
+{% if incidents.is_empty() %}
+<div class="empty">
+  <svg width="32" height="32" fill="none" viewBox="0 0 24 24" stroke="#3f3f46" stroke-width="1.5">
+    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+  </svg>
+  <p>No incidents found.</p>
+</div>
+{% else %}
+<div class="incident-list">
+  {% for incident in incidents %}
+  <a href="/incidents/{{ incident.id }}" class="card incident-card">
+    <div class="incident-main">
+      <div class="incident-title">{{ incident.title }}</div>
+      <div class="incident-meta">
+        <span class="service-tag">{{ incident.service }}</span>
+        <span class="incident-date">{{ incident.created_str() }}</span>
+      </div>
+    </div>
+    <div class="incident-badges">
+      <span class="badge {{ incident.severity_class() }}">{{ incident.severity }}</span>
+      <span class="badge {{ incident.status_class() }}">{{ incident.status }}</span>
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="cert-banner">
+  <span class="cert-icon">🎓</span>
+  <div class="cert-content">
+    <div class="cert-title">Envie de maîtriser Clever Cloud ?</div>
+    <div class="cert-sub">Validez vos compétences avec la certification officielle.</div>
+  </div>
+  <a class="cert-btn" href="https://academy.clever.cloud/" target="_blank" rel="noopener">Obtenir la certification →</a>
+</div>
+{% endblock %}
