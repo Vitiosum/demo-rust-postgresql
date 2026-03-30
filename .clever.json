@@ -1,0 +1,12 @@
+{
+  "apps": [
+    {
+      "app_id": "app_50d16638-a375-4328-85de-4c4ccfe1ac02",
+      "org_id": "user_33f2129b-1f91-4604-abc2-1d0e997c4328",
+      "deploy_url": "https://push-n3-par-clevercloud-customers.services.clever-cloud.com/app_50d16638-a375-4328-85de-4c4ccfe1ac02.git",
+      "git_ssh_url": "git+ssh://git@push-n3-par-clevercloud-customers.services.clever-cloud.com/app_50d16638-a375-4328-85de-4c4ccfe1ac02.git",
+      "name": "demo-rust-postgresql",
+      "alias": "demo-rust-postgresql"
+    }
+  ]
+}

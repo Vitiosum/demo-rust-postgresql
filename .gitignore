@@ -17,4 +17,4 @@ Cargo.lock
 # .sqlx/
 
 # Clever Cloud
-.clever.json
+# .clever.json  ← keep tracked so the deploy_url is available
