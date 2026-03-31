@@ -25,9 +25,10 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    // Database
+    // Database — try DATABASE_URL first, then Clever Cloud's POSTGRESQL_ADDON_URI
     let database_url = std::env::var("DATABASE_URL")
-        .expect("DATABASE_URL must be set");
+        .or_else(|_| std::env::var("POSTGRESQL_ADDON_URI"))
+        .expect("DATABASE_URL or POSTGRESQL_ADDON_URI must be set");
 
     let pool = PgPoolOptions::new()
         .max_connections(5)
