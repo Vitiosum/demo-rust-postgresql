@@ -4,13 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}Incident Tracker{% endblock %} · Clever Cloud</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      background: #09090b;
-      color: #e4e4e7;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #07080C;
+      color: #E6E8F0;
+      font-family: 'Outfit', sans-serif;
       font-size: 14px;
       min-height: 100vh;
       display: flex;
@@ -21,12 +22,11 @@
 
     /* ── Navbar ── */
     .navbar {
-      background: rgba(9,9,11,0.95);
-      border-bottom: 1px solid rgba(255,255,255,0.07);
+      background: #07080C;
+      border-bottom: 1px solid #1A1D26;
       position: sticky;
       top: 0;
       z-index: 100;
-      backdrop-filter: blur(8px);
     }
     .nav-inner {
       max-width: 960px;
@@ -47,7 +47,7 @@
     }
     .brand-dot {
       width: 8px; height: 8px;
-      background: #00ADD8;
+      background: #FF5A1F;
       border-radius: 50%;
       animation: pulse 2s ease-in-out infinite;
     }
@@ -65,12 +65,12 @@
     .nav-link:hover { background: rgba(255,255,255,.06); color: #f4f4f5; }
     .nav-link.active { color: #f4f4f5; background: rgba(255,255,255,.08); }
     .btn-new {
-      background: #00ADD8;
-      color: #09090b !important;
+      background: #FF5A1F;
+      color: #07080C !important;
       font-weight: 600 !important;
       padding: 6px 14px;
     }
-    .btn-new:hover { background: #00c4f5 !important; }
+    .btn-new:hover { background: #ff7040 !important; }
 
     /* ── Layout ── */
     .main { flex: 1; }
