@@ -1,127 +1,94 @@
 # Incident Tracker — Rust + PostgreSQL on Clever Cloud
 
-Demo application showing a Rust (Axum) web app connected to PostgreSQL, deployed on Clever Cloud.
+> A Rust (Axum) incident management app connected to PostgreSQL, deployed on Clever Cloud's Rust runtime. Demonstrates async Rust web development with automatic database migrations.
+
+---
+
+## Deploy on Clever Cloud
+
+1. Fork this repository
+2. In the Clever Cloud console, create a new **Rust** application — connect your forked repo
+3. Add a **PostgreSQL** add-on and link it to your app
+4. Set the `DATABASE_URL` environment variable to the value of `POSTGRESQL_ADDON_URI` (or `POSTGRESQL_ADDON_DIRECT_URI`)
+5. Optionally set `RUST_LOG=incident_tracker=info,tower_http=info`
+6. Push → Clever Cloud builds with `cargo build --release` and deploys automatically
+
+> **Build time:** First deploy takes ~3–5 minutes (Rust compilation). Subsequent deploys reuse the cache and are faster.
+
+---
+
+## Stack
+
+| Layer         | Technology          |
+|---------------|---------------------|
+| Language      | Rust (edition 2021) |
+| Web framework | Axum 0.8            |
+| Async runtime | Tokio               |
+| Database      | PostgreSQL          |
+| DB access     | SQLx 0.8            |
+| Templates     | Askama              |
+| Design        | Track Night (Bebas Neue, orange #FF5A1F, dark background) |
+
+---
 
 ## Features
 
 - List, create, and update incidents
-- Filter by status (open / investigating / resolved)
+- Filter by status: open / investigating / resolved
 - Severity levels: low / medium / high / critical
-- `/health` endpoint
+- Automatic database migrations at startup (`sqlx::migrate!()`)
+- `/health` endpoint (200 OK)
 - `/stats` page with incident counts
-
-## Stack
-
-| Layer     | Technology        |
-|-----------|-------------------|
-| Language  | Rust (edition 2021) |
-| Web framework | Axum 0.7     |
-| Database  | PostgreSQL         |
-| DB access | SQLx 0.7           |
-| Templates | Askama 0.12        |
-| Runtime   | Tokio              |
 
 ---
 
-## Local development
+## Local Development
 
 ### Prerequisites
 
 - Rust (stable, 1.75+)
 - PostgreSQL running locally
 
-### Setup
+### Run
 
 ```bash
-# Clone the repo
-git clone <repo-url>
+git clone https://github.com/Vitiosum/demo-rust-postgresql
 cd demo-rust-postgresql
-
-# Copy and edit environment file
 cp .env.example .env
-# Edit DATABASE_URL with your local credentials
-
-# Run (migrations are applied automatically at startup)
+# Edit .env: set DATABASE_URL to your local PostgreSQL connection string
 cargo run
-```
-
-App is available at `http://localhost:8080`.
-
----
-
-## Environment variables
-
-| Variable     | Description                                  | Default  |
-|--------------|----------------------------------------------|----------|
-| `DATABASE_URL` | PostgreSQL connection string               | required |
-| `PORT`        | Listening port                              | `8080`   |
-| `RUST_LOG`    | Log level (e.g. `incident_tracker=info`)   | `info`   |
-
-On Clever Cloud, `PORT` and `POSTGRESQL_ADDON_URI` are injected automatically.
-
----
-
-## Migrations
-
-Migrations are applied automatically at startup via `sqlx::migrate!()`.
-The SQL file is at `migrations/0001_create_incidents.sql`.
-
-To run manually:
-```bash
-psql $DATABASE_URL -f migrations/0001_create_incidents.sql
+# → http://localhost:8080
 ```
 
 ---
 
-## Deployment on Clever Cloud
+## Environment Variables
 
-### 1. Create a Rust application
-
-In the Clever Cloud console:
-- **New application** → **Rust**
-- Connect your Git repository
-
-### 2. Add a PostgreSQL add-on
-
-- **Add-on** → **PostgreSQL** → link it to your app
-- Enable **"Direct hostname and port"** on the add-on for `POSTGRESQL_ADDON_DIRECT_URI`
-
-### 3. Set environment variables
-
-In the app's **Environment variables** section:
-
-```
-DATABASE_URL = <value of POSTGRESQL_ADDON_URI or POSTGRESQL_ADDON_DIRECT_URI>
-RUST_LOG     = incident_tracker=info,tower_http=info
-```
-
-`PORT` is injected automatically by Clever Cloud — do not set it manually.
-
-### 4. Deploy
-
-```bash
-git push
-```
-
-Clever Cloud builds with `cargo build --release` and runs the `incident-tracker` binary.
-Migrations are applied automatically at startup.
-
-### Points of attention
-
-- `DATABASE_URL` must be set before the first deploy (the app will crash on startup without it)
-- Build time is ~3–5 minutes on first deploy (Rust compilation); subsequent deploys reuse the cache
-- The binary listens on `0.0.0.0:$PORT` as required by Clever Cloud
+| Variable       | Required | Description                                             |
+|----------------|----------|---------------------------------------------------------|
+| `DATABASE_URL` | ✅       | PostgreSQL connection string                            |
+| `PORT`         | auto     | Injected by Clever Cloud (default: 8080)                |
+| `RUST_LOG`     | —        | Log level, e.g. `incident_tracker=info,tower_http=info` |
 
 ---
 
 ## Endpoints
 
-| Method | Path                       | Description            |
-|--------|----------------------------|------------------------|
-| GET    | `/`                        | List incidents          |
-| GET    | `/incidents/new`           | Create form            |
-| POST   | `/incidents`               | Create incident         |
-| GET    | `/incidents/:id`           | Incident detail         |
-| POST   | `/incidents/:id/status`    | Update status           |
-| GET    | `/stats`                   | Statistics              |
-| GET    | `/health`                  | Health check (200 OK)   |
+| Method | Path                    | Description            |
+|--------|-------------------------|------------------------|
+| GET    | `/`                     | List incidents          |
+| GET    | `/incidents/new`        | Create form             |
+| POST   | `/incidents`            | Create incident         |
+| GET    | `/incidents/:id`        | Incident detail         |
+| POST   | `/incidents/:id/status` | Update status           |
+| GET    | `/stats`                | Statistics              |
+| GET    | `/health`               | Health check (200 OK)   |
+
+---
+
+## Deployment Notes
+
+- `DATABASE_URL` must be set before the first deploy — the app will crash on startup without it
+- Migrations are applied automatically at startup via `sqlx::migrate!()` — no manual migration step needed
+- The binary listens on `0.0.0.0:$PORT` as required by Clever Cloud
+- First build is slow (~3–5 min) — Clever Cloud caches compiled artifacts for subsequent deploys
