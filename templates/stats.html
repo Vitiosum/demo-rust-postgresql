@@ -19,9 +19,10 @@
       <div class="cc-card cc-card--accent cc-reveal" style="--i:5"><div class="cc-card__label">critical</div><div class="cc-stat">{{ stats.critical }}</div><p class="cc-card__hint">sévérité critique</p></div>
     </div>
 
-    <div class="cc-mt-3">
+    <div class="cc-mt-3 stats-platform">
 {% include "partials/cc-platform.html" %}
     </div>
+    <style>.stats-platform .cc-kv { grid-template-columns: repeat(3, minmax(0, 1fr)); } @media (max-width: 640px) { .stats-platform .cc-kv { grid-template-columns: 1fr; } }</style>
 
     <div class="cc-mt-3">
       <a class="cc-btn" href="/">← Voir tous les incidents</a>
