@@ -1,56 +1,48 @@
 {% extends "base.html" %}
 
 {% block title %}{{ incident.title }}{% endblock %}
+{% block nav_incidents %} is-active{% endblock %}
 
 {% block content %}
-<a href="/" class="back-link">← Back to incidents</a>
+<section class="cc-section">
+  <div class="cc-container">
+    <a class="it-back" href="/">← Retour aux incidents</a>
 
-<div class="detail-header">
-  <div>
-    <h1 style="margin-bottom:8px">{{ incident.title }}</h1>
-    <div class="detail-badges">
-      <span class="badge {{ incident.severity_class() }}">{{ incident.severity }}</span>
-      <span class="badge {{ incident.status_class() }}">{{ incident.status }}</span>
+    <div class="cc-card cc-card--pad cc-card--accent cc-reveal" style="--i:1">
+      <div class="cc-card__label">Incident · <span class="cc-mono">{{ incident.short_id() }}</span></div>
+      <h1 class="cc-section__title cc-mt-1">{{ incident.title }}</h1>
+      <div class="cc-flex cc-mt-2">
+        <span class="cc-badge {{ incident.severity_class() }}">{{ incident.severity }}</span>
+        <span class="cc-badge {{ incident.status_class() }}">{{ incident.status }}</span>
+      </div>
+
+      {% if incident.has_description() %}
+      <div class="cc-mt-3">
+        <div class="cc-card__label">Description</div>
+        <p class="it-desc cc-mt-1">{{ incident.description_text() }}</p>
+      </div>
+      {% endif %}
+
+      <dl class="it-meta cc-mt-3">
+        <div><dt>Service</dt><dd>{{ incident.service }}</dd></div>
+        <div><dt>Sévérité</dt><dd>{{ incident.severity }}</dd></div>
+        <div><dt>Créé le</dt><dd class="cc-mono">{{ incident.created_str() }}</dd></div>
+        <div><dt>Mis à jour le</dt><dd class="cc-mono">{{ incident.updated_str() }}</dd></div>
+        <div><dt>Identifiant</dt><dd class="cc-mono cc-muted">{{ incident.id }}</dd></div>
+      </dl>
+    </div>
+
+    <div class="cc-card cc-card--pad cc-mt-2 cc-reveal" style="--i:2">
+      <div class="cc-section__head">
+        <h2 class="cc-card__title">Changer le statut</h2>
+        <span class="cc-section__sub">UPDATE … RETURNING via SQLx</span>
+      </div>
+      <form class="it-status" method="post" action="/incidents/{{ incident.id }}/status">
+        <button class="cc-btn cc-btn--sm{% if incident.status == "open" %} is-current{% endif %}" type="submit" name="status" value="open">open</button>
+        <button class="cc-btn cc-btn--sm{% if incident.status == "investigating" %} is-current{% endif %}" type="submit" name="status" value="investigating">investigating</button>
+        <button class="cc-btn cc-btn--sm{% if incident.status == "resolved" %} is-current{% endif %}" type="submit" name="status" value="resolved">resolved</button>
+      </form>
     </div>
   </div>
-
-  <form class="status-form" method="post" action="/incidents/{{ incident.id }}/status">
-    <select name="status">
-      <option value="open"{% if incident.status == "open" %} selected{% endif %}>Open</option>
-      <option value="investigating"{% if incident.status == "investigating" %} selected{% endif %}>Investigating</option>
-      <option value="resolved"{% if incident.status == "resolved" %} selected{% endif %}>Resolved</option>
-    </select>
-    <button type="submit" class="btn btn-ghost btn-sm">Update status</button>
-  </form>
-</div>
-
-{% if incident.has_description() %}
-<div class="card desc-card">
-  <p class="field-label">Description</p>
-  <p class="desc-text" style="margin-top:8px">{{ incident.description_text() }}</p>
-</div>
-{% endif %}
-
-<div class="detail-grid">
-  <div class="card detail-field">
-    <p class="field-label">Service</p>
-    <p class="field-value">{{ incident.service }}</p>
-  </div>
-  <div class="card detail-field">
-    <p class="field-label">Severity</p>
-    <p class="field-value"><span class="badge {{ incident.severity_class() }}">{{ incident.severity }}</span></p>
-  </div>
-  <div class="card detail-field">
-    <p class="field-label">Created</p>
-    <p class="field-value" style="color:#71717a;font-size:13px">{{ incident.created_str() }}</p>
-  </div>
-  <div class="card detail-field">
-    <p class="field-label">Last updated</p>
-    <p class="field-value" style="color:#71717a;font-size:13px">{{ incident.updated_str() }}</p>
-  </div>
-  <div class="card detail-field" style="grid-column:1/-1">
-    <p class="field-label">Incident ID</p>
-    <p class="field-value" style="font-family:monospace;font-size:12px;color:#52525b">{{ incident.id }}</p>
-  </div>
-</div>
+</section>
 {% endblock %}

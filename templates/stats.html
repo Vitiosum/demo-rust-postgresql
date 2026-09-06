@@ -1,45 +1,31 @@
 {% extends "base.html" %}
 
-{% block title %}Stats{% endblock %}
+{% block title %}Statistiques{% endblock %}
+{% block nav_stats %} is-active{% endblock %}
 
 {% block content %}
-<div class="page-header">
-  <h1>Statistics</h1>
-</div>
+<section class="cc-section">
+  <div class="cc-container">
+    <div class="cc-section__head cc-reveal" style="--i:0">
+      <h1 class="cc-section__title">Statistiques</h1>
+      <span class="cc-section__sub">Agrégats calculés par PostgreSQL (<span class="cc-kbd">COUNT … FILTER</span>)</span>
+    </div>
 
-<div class="stats-grid">
-  <div class="card stat-card stat-total">
-    <div class="stat-value">{{ stats.total }}</div>
-    <div class="stat-label">Total incidents</div>
-  </div>
-  <div class="card stat-card stat-open">
-    <div class="stat-value">{{ stats.open }}</div>
-    <div class="stat-label">Open</div>
-  </div>
-  <div class="card stat-card stat-invest">
-    <div class="stat-value">{{ stats.investigating }}</div>
-    <div class="stat-label">Investigating</div>
-  </div>
-  <div class="card stat-card stat-resolved">
-    <div class="stat-value">{{ stats.resolved }}</div>
-    <div class="stat-label">Resolved</div>
-  </div>
-  <div class="card stat-card stat-critical">
-    <div class="stat-value">{{ stats.critical }}</div>
-    <div class="stat-label">Critical severity</div>
-  </div>
-</div>
+    <div class="cc-grid">
+      <div class="cc-card cc-card--accent cc-reveal" style="--i:1"><div class="cc-card__label">Total</div><div class="cc-stat">{{ stats.total }}</div><p class="cc-card__hint">incidents enregistrés</p></div>
+      <div class="cc-card cc-card--accent cc-reveal" style="--i:2"><div class="cc-card__label">open</div><div class="cc-stat">{{ stats.open }}</div><p class="cc-card__hint">à prendre en charge</p></div>
+      <div class="cc-card cc-card--accent cc-reveal" style="--i:3"><div class="cc-card__label">investigating</div><div class="cc-stat">{{ stats.investigating }}</div><p class="cc-card__hint">en cours d'analyse</p></div>
+      <div class="cc-card cc-card--accent cc-reveal" style="--i:4"><div class="cc-card__label">resolved</div><div class="cc-stat">{{ stats.resolved }}</div><p class="cc-card__hint">clôturés</p></div>
+      <div class="cc-card cc-card--accent cc-reveal" style="--i:5"><div class="cc-card__label">critical</div><div class="cc-stat">{{ stats.critical }}</div><p class="cc-card__hint">sévérité critique</p></div>
+    </div>
 
-<div style="margin-top:8px">
-  <a href="/" class="btn btn-ghost">← View all incidents</a>
-</div>
+    <div class="cc-mt-3">
+{% include "partials/cc-platform.html" %}
+    </div>
 
-<div class="cert-banner">
-  <span class="cert-icon">🎓</span>
-  <div class="cert-content">
-    <div class="cert-title">Envie de maîtriser Clever Cloud ?</div>
-    <div class="cert-sub">Validez vos compétences avec la certification officielle.</div>
+    <div class="cc-mt-3">
+      <a class="cc-btn" href="/">← Voir tous les incidents</a>
+    </div>
   </div>
-  <a class="cert-btn" href="https://academy.clever.cloud/" target="_blank" rel="noopener">Obtenir la certification →</a>
-</div>
+</section>
 {% endblock %}

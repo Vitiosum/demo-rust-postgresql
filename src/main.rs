@@ -1,4 +1,6 @@
 use axum::{
+    http::header::{CACHE_CONTROL, CONTENT_TYPE},
+    response::IntoResponse,
     routing::{get, post},
     Router,
 };
@@ -10,6 +12,17 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 mod db;
 mod handlers;
 mod models;
+
+/// Clever Brand Kit stylesheet, embedded in the binary (no static-file dependency).
+async fn brand_css() -> impl IntoResponse {
+    (
+        [
+            (CONTENT_TYPE, "text/css; charset=utf-8"),
+            (CACHE_CONTROL, "public, max-age=86400"),
+        ],
+        include_str!("../static/cc-brand.css"),
+    )
+}
 
 #[tokio::main]
 async fn main() {
@@ -49,10 +62,12 @@ async fn main() {
         .route("/",                         get(handlers::list_incidents))
         .route("/incidents/new",            get(handlers::new_incident_form))
         .route("/incidents",                post(handlers::create_incident))
-        .route("/incidents/:id",            get(handlers::incident_detail))
-        .route("/incidents/:id/status",     post(handlers::update_status))
+        // Axum 0.8 path-parameter syntax: `{id}` (the former `:id` panics at startup)
+        .route("/incidents/{id}",           get(handlers::incident_detail))
+        .route("/incidents/{id}/status",    post(handlers::update_status))
         .route("/health",                   get(handlers::health))
         .route("/stats",                    get(handlers::stats))
+        .route("/cc-brand.css",             get(brand_css))
         .layer(TraceLayer::new_for_http())
         .with_state(pool);
 

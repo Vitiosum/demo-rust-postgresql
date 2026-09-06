@@ -1,50 +1,55 @@
 {% extends "base.html" %}
 
-{% block title %}New Incident{% endblock %}
+{% block title %}Nouvel incident{% endblock %}
+{% block nav_incidents %} is-active{% endblock %}
 
 {% block content %}
-<a href="/" class="back-link">← Back to incidents</a>
-
-<div class="page-header">
-  <h1>New Incident</h1>
-</div>
-
-<div class="card form-card">
-  {% if !error.is_empty() %}
-  <div class="form-error">{{ error }}</div>
-  {% endif %}
-
-  <form method="post" action="/incidents">
-    <div class="form-group">
-      <label for="title">Title *</label>
-      <input type="text" id="title" name="title" placeholder="Brief description of the incident" required>
+<section class="cc-section">
+  <div class="cc-container">
+    <a class="it-back" href="/">← Retour aux incidents</a>
+    <div class="cc-section__head">
+      <h1 class="cc-section__title">Nouvel incident</h1>
+      <span class="cc-section__sub">Insertion dans PostgreSQL via SQLx</span>
     </div>
 
-    <div class="form-group">
-      <label for="service">Service *</label>
-      <input type="text" id="service" name="service" placeholder="e.g. api-gateway, auth, billing">
-    </div>
+    <div class="cc-card cc-card--pad cc-reveal" style="--i:1">
+      <form class="it-form" method="post" action="/incidents">
+        {% if !error.is_empty() %}
+        <div class="cc-error" role="alert">{{ error }}</div>
+        {% endif %}
 
-    <div class="form-group">
-      <label for="severity">Severity *</label>
-      <select id="severity" name="severity">
-        <option value="low">Low</option>
-        <option value="medium" selected>Medium</option>
-        <option value="high">High</option>
-        <option value="critical">Critical</option>
-      </select>
-    </div>
+        <div class="cc-field">
+          <label class="cc-label" for="title">Titre *</label>
+          <input class="cc-input" type="text" id="title" name="title" placeholder="Résumé court de l'incident" required maxlength="255">
+        </div>
 
-    <div class="form-group">
-      <label for="description">Description</label>
-      <textarea id="description" name="description" placeholder="What happened? What is the impact?"></textarea>
-      <p class="form-hint">Optional — describe the incident, impact, and any initial findings.</p>
-    </div>
+        <div class="cc-field">
+          <label class="cc-label" for="service">Service *</label>
+          <input class="cc-input" type="text" id="service" name="service" placeholder="ex. api-gateway, auth, billing" required maxlength="100">
+        </div>
 
-    <div style="display:flex;gap:8px;margin-top:8px">
-      <button type="submit" class="btn btn-primary">Create incident</button>
-      <a href="/" class="btn btn-ghost">Cancel</a>
+        <div class="cc-field">
+          <label class="cc-label" for="severity">Sévérité *</label>
+          <select class="cc-select" id="severity" name="severity">
+            <option value="low">low</option>
+            <option value="medium" selected>medium</option>
+            <option value="high">high</option>
+            <option value="critical">critical</option>
+          </select>
+        </div>
+
+        <div class="cc-field">
+          <label class="cc-label" for="description">Description</label>
+          <textarea class="cc-textarea" id="description" name="description" placeholder="Que s'est-il passé ? Quel impact ?"></textarea>
+          <span class="cc-hint">Optionnel — contexte, impact, premières pistes.</span>
+        </div>
+
+        <div class="it-actions">
+          <button class="cc-btn cc-btn--gradient" type="submit">Créer l'incident</button>
+          <a class="cc-btn cc-btn--ghost" href="/">Annuler</a>
+        </div>
+      </form>
     </div>
-  </form>
-</div>
+  </div>
+</section>
 {% endblock %}

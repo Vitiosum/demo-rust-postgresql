@@ -9,7 +9,7 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::db;
-use crate::models::{CreateIncidentForm, FilterQuery, Incident, Stats, UpdateStatusForm};
+use crate::models::{CreateIncidentForm, FilterQuery, Incident, Platform, Stats, UpdateStatusForm};
 
 // ---------------------------------------------------------------------------
 // Template → Response bridge
@@ -68,24 +68,28 @@ impl From<sqlx::Error> for AppError {
 struct IndexTemplate {
     incidents: Vec<Incident>,
     filter: String, // "" = all, "open", "investigating", "resolved"
+    cc: Platform,
 }
 
 #[derive(Template)]
 #[template(path = "new.html")]
 struct NewTemplate {
     error: String, // empty string = no error
+    cc: Platform,
 }
 
 #[derive(Template)]
 #[template(path = "detail.html")]
 struct DetailTemplate {
     incident: Incident,
+    cc: Platform,
 }
 
 #[derive(Template)]
 #[template(path = "stats.html")]
 struct StatsTemplate {
     stats: Stats,
+    cc: Platform,
 }
 
 // ---------------------------------------------------------------------------
@@ -99,11 +103,11 @@ pub async fn list_incidents(
     let filter = query.status.unwrap_or_default();
     let db_filter = if filter.is_empty() { None } else { Some(filter.as_str()) };
     let incidents = db::list_incidents(&pool, db_filter).await?;
-    Ok(HtmlTemplate(IndexTemplate { incidents, filter }))
+    Ok(HtmlTemplate(IndexTemplate { incidents, filter, cc: Platform::from_env() }))
 }
 
 pub async fn new_incident_form() -> impl IntoResponse {
-    HtmlTemplate(NewTemplate { error: String::new() })
+    HtmlTemplate(NewTemplate { error: String::new(), cc: Platform::from_env() })
 }
 
 pub async fn create_incident(
@@ -112,14 +116,16 @@ pub async fn create_incident(
 ) -> Result<Response, AppError> {
     if form.title.trim().is_empty() || form.service.trim().is_empty() {
         return Ok(HtmlTemplate(NewTemplate {
-            error: "Title and service are required.".to_string(),
+            error: "Le titre et le service sont obligatoires.".to_string(),
+            cc: Platform::from_env(),
         })
         .into_response());
     }
 
     if !["low", "medium", "high", "critical"].contains(&form.severity.as_str()) {
         return Ok(HtmlTemplate(NewTemplate {
-            error: "Invalid severity value.".to_string(),
+            error: "Sévérité invalide.".to_string(),
+            cc: Platform::from_env(),
         })
         .into_response());
     }
@@ -135,7 +141,7 @@ pub async fn incident_detail(
     let incident = db::get_incident(&pool, id)
         .await?
         .ok_or(AppError::NotFound)?;
-    Ok(HtmlTemplate(DetailTemplate { incident }))
+    Ok(HtmlTemplate(DetailTemplate { incident, cc: Platform::from_env() }))
 }
 
 pub async fn update_status(
@@ -158,5 +164,5 @@ pub async fn health() -> impl IntoResponse {
 
 pub async fn stats(State(pool): State<PgPool>) -> Result<impl IntoResponse, AppError> {
     let stats = db::get_stats(&pool).await?;
-    Ok(HtmlTemplate(StatsTemplate { stats }))
+    Ok(HtmlTemplate(StatsTemplate { stats, cc: Platform::from_env() }))
 }

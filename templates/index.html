@@ -1,51 +1,110 @@
 {% extends "base.html" %}
 
 {% block title %}Incidents{% endblock %}
+{% block nav_incidents %} is-active{% endblock %}
 
 {% block content %}
-<div class="page-header">
-  <h1>Incidents</h1>
-  <div class="filters">
-    <a href="/"                     class="filter-tab{% if filter == "" %} active{% endif %}">All</a>
-    <a href="/?status=open"         class="filter-tab{% if filter == "open" %} active{% endif %}">Open</a>
-    <a href="/?status=investigating" class="filter-tab{% if filter == "investigating" %} active{% endif %}">Investigating</a>
-    <a href="/?status=resolved"     class="filter-tab{% if filter == "resolved" %} active{% endif %}">Resolved</a>
+<section class="cc-hero it-hero">
+  <div class="cc-container">
+    <div class="cc-eyebrow cc-reveal" style="--i:0">Runtime Rust · Add-on PostgreSQL</div>
+    <h1 class="cc-hero__title cc-reveal" style="--i:1">Incidents, <span class="cc-grad-text">suivis en Rust.</span></h1>
+    <p class="cc-hero__lead cc-reveal" style="--i:2">Un incident tracker Axum + SQLx connecté à un add-on PostgreSQL managé. <strong>Compilé et déployé par Clever Cloud</strong> à chaque <span class="cc-kbd">git push</span>, migrations appliquées automatiquement au démarrage.</p>
+    <ul class="cc-facts cc-reveal" style="--i:3">
+      <li>Build Cargo automatique depuis Git</li>
+      <li>Add-on PostgreSQL lié</li>
+      <li>Migrations SQLx au démarrage</li>
+      <li>HTTPS et domaine inclus</li>
+    </ul>
   </div>
-</div>
+</section>
 
-{% if incidents.is_empty() %}
-<div class="empty">
-  <svg width="32" height="32" fill="none" viewBox="0 0 24 24" stroke="#3f3f46" stroke-width="1.5">
-    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-  </svg>
-  <p>No incidents found.</p>
-</div>
-{% else %}
-<div class="incident-list">
-  {% for incident in incidents %}
-  <a href="/incidents/{{ incident.id }}" class="card incident-card">
-    <div class="incident-main">
-      <div class="incident-title">{{ incident.title }}</div>
-      <div class="incident-meta">
-        <span class="service-tag">{{ incident.service }}</span>
-        <span class="incident-date">{{ incident.created_str() }}</span>
+<section class="cc-section" style="padding-top:0">
+  <div class="cc-container">
+    <div class="cc-cert cc-reveal" style="--i:4">
+{% include "partials/cc-badge.html" %}
+      <div>
+        <div class="cc-cert__kicker">Clever Cloud Academy</div>
+        <h2 class="cc-cert__title">Devenez <span class="cc-grad-text">certifié Clever Cloud</span></h2>
+        <p class="cc-cert__text">Deux parcours officiels, de la théorie au déploiement avancé. Le badge numérique est délivré automatiquement dès la validation.</p>
+        <div class="cc-tracks">
+          <a class="cc-track" href="https://academy.clever.cloud/course/view.php?id=2" target="_blank" rel="noopener">
+            <span class="cc-track__num">01</span>
+            <span><span class="cc-track__name">Cloud Computing Fundamentals</span><br><span class="cc-track__desc">Concepts, architectures, modèles IaaS · PaaS · FaaS.</span></span>
+          </a>
+          <a class="cc-track" href="https://academy.clever.cloud/course/section.php?id=18" target="_blank" rel="noopener">
+            <span class="cc-track__num">02</span>
+            <span><span class="cc-track__name">Advanced Deployment</span><br><span class="cc-track__desc">Maîtriser le déploiement d'applications sur Clever Cloud.</span></span>
+          </a>
+        </div>
+        <div class="cc-cert__actions">
+          <a class="cc-btn cc-btn--gradient" href="https://academy.clever.cloud/" target="_blank" rel="noopener">Obtenir ma certification <span class="cc-btn__arrow">→</span></a>
+          <span class="cc-cert__note">academy.clever.cloud · développeurs, partenaires, équipes</span>
+        </div>
       </div>
     </div>
-    <div class="incident-badges">
-      <span class="badge {{ incident.severity_class() }}">{{ incident.severity }}</span>
-      <span class="badge {{ incident.status_class() }}">{{ incident.status }}</span>
-    </div>
-  </a>
-  {% endfor %}
-</div>
-{% endif %}
-
-<div class="cert-banner">
-  <span class="cert-icon">🎓</span>
-  <div class="cert-content">
-    <div class="cert-title">Envie de maîtriser Clever Cloud ?</div>
-    <div class="cert-sub">Validez vos compétences avec la certification officielle.</div>
   </div>
-  <a class="cert-btn" href="https://academy.clever.cloud/" target="_blank" rel="noopener">Obtenir la certification →</a>
-</div>
+</section>
+
+<section class="cc-section">
+  <div class="cc-container">
+    <div class="cc-grid cc-grid--2">
+      <div class="cc-card cc-card--pad cc-reveal" style="--i:5">
+        <div class="cc-section__head">
+          <h2 class="cc-section__title">Incidents</h2>
+          <span class="cc-section__sub">{{ incidents.len() }} affiché(s) · table <span class="cc-kbd">incidents</span></span>
+        </div>
+        <div class="it-tabs-row">
+          <nav class="cc-tabs" aria-label="Filtrer par statut">
+            <a class="cc-tab{% if filter == "" %} is-active{% endif %}" href="/">Tous</a>
+            <a class="cc-tab{% if filter == "open" %} is-active{% endif %}" href="/?status=open">open</a>
+            <a class="cc-tab{% if filter == "investigating" %} is-active{% endif %}" href="/?status=investigating">investigating</a>
+            <a class="cc-tab{% if filter == "resolved" %} is-active{% endif %}" href="/?status=resolved">resolved</a>
+          </nav>
+          <a class="cc-btn cc-btn--gradient cc-btn--sm" href="/incidents/new">+ Nouvel incident</a>
+        </div>
+
+        {% if incidents.is_empty() %}
+        <div class="cc-empty">
+          <strong>Aucun incident</strong>
+          {% if filter == "" %}Créez le premier incident pour alimenter la table PostgreSQL.{% else %}Aucun incident avec le statut <span class="cc-kbd">{{ filter }}</span>.{% endif %}
+        </div>
+        {% else %}
+        <ul class="cc-list">
+          {% for incident in incidents %}
+          <li>
+            <a class="cc-row" href="/incidents/{{ incident.id }}">
+              <span class="cc-row__id">{{ incident.short_id() }}</span>
+              <div class="cc-row__main">
+                <div class="cc-row__title">{{ incident.title }}</div>
+                <div class="cc-row__meta">{{ incident.service }} · {{ incident.created_str() }}</div>
+              </div>
+              <div class="cc-row__actions">
+                <span class="cc-badge {{ incident.severity_class() }}">{{ incident.severity }}</span>
+                <span class="cc-badge {{ incident.status_class() }}">{{ incident.status }}</span>
+              </div>
+            </a>
+          </li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+      </div>
+
+{% include "partials/cc-platform.html" %}
+    </div>
+  </div>
+</section>
+
+<section class="cc-section">
+  <div class="cc-container">
+    <div class="cc-section__head cc-reveal" style="--i:7">
+      <h2 class="cc-section__title">Ce que Clever Cloud fait pour cette app</h2>
+      <span class="cc-section__sub">Sans devops, sans Dockerfile</span>
+    </div>
+    <div class="cc-grid cc-grid--3">
+      <div class="cc-card cc-card--accent cc-reveal" style="--i:8"><div class="cc-card__label">Déploiement</div><div class="cc-card__title cc-mt-1">git push → cargo build → run</div><p class="cc-card__hint">Runtime Rust détecté, binaire compilé en release, cache de build réutilisé, redémarrage sans interruption.</p></div>
+      <div class="cc-card cc-card--accent cc-reveal" style="--i:9"><div class="cc-card__label">Données</div><div class="cc-card__title cc-mt-1">PostgreSQL managé</div><p class="cc-card__hint">URI injectée dans l'environnement, sauvegardes quotidiennes, montée de gamme sans migration.</p></div>
+      <div class="cc-card cc-card--accent cc-reveal" style="--i:10"><div class="cc-card__label">Confiance</div><div class="cc-card__title cc-mt-1">Hébergé en France</div><p class="cc-card__hint">ISO 27001, HDS, hors de portée des lois extraterritoriales.</p></div>
+    </div>
+  </div>
+</section>
 {% endblock %}
