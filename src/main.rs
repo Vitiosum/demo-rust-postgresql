@@ -6,6 +6,7 @@ use axum::{
 };
 use sqlx::postgres::PgPoolOptions;
 use std::net::SocketAddr;
+use std::time::Duration;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -43,8 +44,17 @@ async fn main() {
         .or_else(|_| std::env::var("POSTGRESQL_ADDON_URI"))
         .expect("DATABASE_URL or POSTGRESQL_ADDON_URI must be set");
 
+    // Pool size: DB_POOL_MAX × instances must stay below the add-on's connection
+    // limit (PostgreSQL DEV plan = 5 connections). Default 2 leaves room for a
+    // second instance during a redeploy and for an admin psql session.
+    let pool_max: u32 = std::env::var("DB_POOL_MAX")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(2);
+
     let pool = PgPoolOptions::new()
-        .max_connections(5)
+        .max_connections(pool_max)
+        .acquire_timeout(Duration::from_secs(5))
         .connect(&database_url)
         .await
         .expect("Failed to connect to PostgreSQL");
