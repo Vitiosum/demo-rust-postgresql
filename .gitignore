@@ -13,8 +13,5 @@
 # macOS
 .DS_Store
 
-# SQLx offline query cache (enable if needed)
-# .sqlx/
-
 # Clever Cloud
 # .clever.json  ← keep tracked so the deploy_url is available

@@ -8,10 +8,13 @@
 
 1. Fork this repository
 2. In the Clever Cloud console, create a new **Rust** application — connect your forked repo
-3. Add a **PostgreSQL** add-on and link it to your app
-4. Set the `DATABASE_URL` environment variable to the value of `POSTGRESQL_ADDON_URI` (or `POSTGRESQL_ADDON_DIRECT_URI`) — the app also falls back to `POSTGRESQL_ADDON_URI` automatically
-5. Optionally set `RUST_LOG=incident_tracker=info,tower_http=info`
-6. Push → Clever Cloud builds with `cargo build --release` and deploys automatically
+3. Add a **PostgreSQL** add-on and link it to your app — the app reads `POSTGRESQL_ADDON_URI` directly, **do not** copy it into `DATABASE_URL`
+4. Recommended environment variables (console or `clever env set`):
+   - `DB_POOL_MAX=2` — pool size; keep `DB_POOL_MAX × instances` below the add-on's connection limit (DEV plan = 5)
+   - `RUST_LOG=incident_tracker=info,tower_http=info` (already the built-in default)
+   - `CC_HEALTH_CHECK_PATH=/health` — the platform validates the deployment against PostgreSQL
+   - `CC_RUST_VERSION=1.94` — pins the toolchain used by the build (minimum declared: 1.85)
+5. Push → Clever Cloud builds with `cargo build --release --locked` and deploys automatically
 
 > **Build time:** First deploy takes ~3–5 minutes (Rust compilation). Subsequent deploys reuse the cache and are faster.
 
@@ -37,7 +40,10 @@
 - Filter by status: open / investigating / resolved (`?status=`)
 - Severity levels: low / medium / high / critical
 - Automatic database migrations at startup (`sqlx::migrate!()`)
-- `/health` endpoint (200 OK)
+- `/health` endpoint — 200 when PostgreSQL answers `SELECT 1`, 503 otherwise
+- Server-side validation: title ≤ 255, service ≤ 100, description ≤ 10 000 characters (form error, never a 500)
+- Security headers on every response (`X-Content-Type-Options`, `Referrer-Policy`, `X-Frame-Options`, `Content-Security-Policy`) — TLS/HSTS stay on the Clever Cloud proxy
+- Graceful shutdown on SIGTERM/Ctrl+C (in-flight requests drained, pool closed)
 - `/stats` page with incident counts
 - **« Vu depuis Clever Cloud » panel**: shows the variables the platform injects (`CC_APP_NAME`, `APP_ID`, `INSTANCE_NUMBER`, `INSTANCE_TYPE`, `CC_PRETTY_INSTANCE_NAME`, `CC_COMMIT_ID`, `CC_DEPLOYMENT_ID`) — displays « Local · hors Clever Cloud » when running outside the platform
 
@@ -65,7 +71,7 @@ The home page puts the **Clever Cloud Academy** certification right under the he
 
 ### Prerequisites
 
-- Rust (stable, 1.75+)
+- Rust (stable, 1.85+ — `rust-version` in `Cargo.toml`)
 - PostgreSQL running locally
 
 ### Run
@@ -91,9 +97,13 @@ DATABASE_URL=postgres://localhost/demo_rust PORT=8082 cargo run
 
 | Variable       | Required | Description                                             |
 |----------------|----------|---------------------------------------------------------|
-| `DATABASE_URL` | ✅       | PostgreSQL connection string (falls back to `POSTGRESQL_ADDON_URI`) |
+| `POSTGRESQL_ADDON_URI` | ✅ (Clever) | Injected by the linked PostgreSQL add-on; read when `DATABASE_URL` is absent |
+| `DATABASE_URL` | ✅ (local) | PostgreSQL connection string for local runs (takes precedence if set) |
 | `PORT`         | auto     | Injected by Clever Cloud (default: 8080)                |
-| `RUST_LOG`     | —        | Log level, e.g. `incident_tracker=info,tower_http=info` |
+| `DB_POOL_MAX`  | —        | Max pool connections (default: 2). Rule: `DB_POOL_MAX × instances ≤ add-on limit` (DEV plan = 5) |
+| `RUST_LOG`     | —        | Log filter (default: `incident_tracker=info,tower_http=info`) |
+| `CC_HEALTH_CHECK_PATH` | — (Clever) | Set to `/health` so the platform checks PostgreSQL before routing traffic |
+| `CC_RUST_VERSION` | — (Clever) | Pins the Rust toolchain used by the build (e.g. `1.94`) |
 | `CC_APP_NAME`, `APP_ID`, `INSTANCE_NUMBER`, `INSTANCE_TYPE`, `CC_PRETTY_INSTANCE_NAME`, `CC_COMMIT_ID`, `CC_DEPLOYMENT_ID` | auto | Injected by Clever Cloud, read-only, displayed in the platform panel |
 
 ---
@@ -108,7 +118,7 @@ DATABASE_URL=postgres://localhost/demo_rust PORT=8082 cargo run
 | GET    | `/incidents/{id}`         | Incident detail                      |
 | POST   | `/incidents/{id}/status`  | Update status                        |
 | GET    | `/stats`                  | Statistics                           |
-| GET    | `/health`                 | Health check (200 OK)                |
+| GET    | `/health`                 | Health check (200 if PostgreSQL answers, 503 otherwise) |
 | GET    | `/cc-brand.css`           | Clever Brand Kit stylesheet (embedded) |
 
 > **Axum 0.8 note:** path parameters use the `{id}` syntax. The former `:id` syntax makes Axum 0.8 **panic at startup** (`Path segments must not start with ':'`) — this was fixed in this repository.
@@ -117,7 +127,9 @@ DATABASE_URL=postgres://localhost/demo_rust PORT=8082 cargo run
 
 ## Deployment Notes
 
-- `DATABASE_URL` (or the linked add-on's `POSTGRESQL_ADDON_URI`) must be available before the first deploy — the app will crash on startup without it
+- The PostgreSQL add-on must be linked before the first deploy (`POSTGRESQL_ADDON_URI`) — the app exits at startup without it
+- Pool sizing: `DB_POOL_MAX` (default 2) × number of instances must stay below the add-on's connection limit — a redeploy briefly runs two instances
+- `clevercloud/rust.json` is **not** read by the Rust runtime (build is always `cargo build --release --locked`); the file is kept for history only
 - Migrations are applied automatically at startup via `sqlx::migrate!()` — no manual migration step needed
 - The binary listens on `0.0.0.0:$PORT` as required by Clever Cloud
 - First build is slow (~3–5 min) — Clever Cloud caches compiled artifacts for subsequent deploys
