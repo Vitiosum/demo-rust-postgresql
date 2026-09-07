@@ -111,7 +111,7 @@ async fn main() {
                  frame-ancestors 'none'",
             ),
         ))
-        .with_state(pool);
+        .with_state(pool.clone());
 
     // Port: Clever Cloud injects PORT automatically
     let port: u16 = std::env::var("PORT")
@@ -127,6 +127,38 @@ async fn main() {
         .expect("Failed to bind");
 
     axum::serve(listener, app)
+        .with_graceful_shutdown(shutdown_signal())
         .await
         .expect("Server error");
+
+    // Let in-flight requests finish, then release the PostgreSQL connections.
+    pool.close().await;
+    tracing::info!("Shutdown complete");
+}
+
+/// Resolves on Ctrl+C or SIGTERM (sent by Clever Cloud on redeploy/stop).
+async fn shutdown_signal() {
+    let ctrl_c = async {
+        tokio::signal::ctrl_c()
+            .await
+            .expect("Failed to install Ctrl+C handler");
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+            .expect("Failed to install SIGTERM handler")
+            .recv()
+            .await;
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => {},
+        _ = terminate => {},
+    }
+
+    tracing::info!("Shutdown signal received, draining in-flight requests");
 }
