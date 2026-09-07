@@ -12,14 +12,14 @@ Incident tracker CRUD en Rust avec Axum et SQLx.
 L'utilisateur peut créer, lire et mettre à jour des incidents (pas de suppression) avec titre, description, sévérité (low/medium/high/critical) et statut (open/investigating/resolved).
 Conçue comme démo de déploiement sur **Clever Cloud**.
 
-Déployée sur **Clever Cloud** (runtime Rust + add-on PostgreSQL).
+Cible de déploiement : **Clever Cloud** (runtime Rust natif + add-on PostgreSQL, sans Dockerfile). Aucune application n'est en service actuellement : la procédure ci-dessous vaut pour une application à créer.
 
 ---
 
 ## ☁️ Déploiement Clever Cloud
 
 - **Type d'app** : Rust
-- **Build** : `cargo build --release --locked` (runtime Rust, `Cargo.lock` committé) ; `clevercloud/rust.json` n'est **pas lu** par le runtime Rust, conservé pour l'historique
+- **Build** : `cargo build --release --locked` (runtime Rust, `Cargo.lock` committé) ; `clevercloud/rust.json` est **détecté par la plateforme au build** (log « Configuration file detected »), mais la configuration du runtime Rust passe par les variables d'environnement
 - **Add-on requis** : PostgreSQL (lié à l'application) — l'app lit `POSTGRESQL_ADDON_URI`, ne pas dupliquer dans `DATABASE_URL`
 - **Compilation** : Clever Cloud compile le Rust à chaque déploiement
 
@@ -79,7 +79,7 @@ static/cc-brand.css → Clever Brand Kit (copie, ne pas modifier)
 migrations/        → migrations SQL (SQLx)
 Cargo.toml         → dépendances Rust
 .cargo/audit.toml  → config cargo-audit (RUSTSEC-2023-0071 ignoré : rsa hors graphe compilé)
-clevercloud/rust.json → inerte (non lu par le runtime Rust), conservé pour l'historique
+clevercloud/rust.json → détecté par la plateforme au build (« Configuration file detected »)
 ```
 
 ---
@@ -92,7 +92,7 @@ git commit -m "description"
 git push
 ```
 
-Clever Cloud recompile et redéploie automatiquement après chaque push. La compilation Rust prend environ 3-5 minutes.
+Une fois l'application créée et le dépôt lié, Clever Cloud recompile et redéploie automatiquement après chaque push. La compilation Rust prend environ 3-5 minutes.
 
 ---
 

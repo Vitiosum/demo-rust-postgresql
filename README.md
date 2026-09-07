@@ -1,6 +1,6 @@
 # Incident Tracker — Rust + PostgreSQL on Clever Cloud
 
-> A Rust (Axum) incident management app connected to PostgreSQL, deployed on Clever Cloud's Rust runtime. Demonstrates async Rust web development with automatic database migrations — dressed with the **Clever Brand Kit** and putting the **Clever Cloud certification** front and center.
+> A Rust (Axum) incident management app connected to PostgreSQL, built for Clever Cloud's **native Rust runtime** (no Docker image, no Dockerfile). Demonstrates async Rust web development with automatic database migrations — dressed with the **Clever Brand Kit** and putting the **Clever Cloud certification** front and center.
 
 ---
 
@@ -129,7 +129,7 @@ DATABASE_URL=postgres://localhost/demo_rust PORT=8082 cargo run
 
 - The PostgreSQL add-on must be linked before the first deploy (`POSTGRESQL_ADDON_URI`) — the app exits at startup without it
 - Pool sizing: `DB_POOL_MAX` (default 2) × number of instances must stay below the add-on's connection limit — a redeploy briefly runs two instances
-- `clevercloud/rust.json` is **not** read by the Rust runtime (build is always `cargo build --release --locked`); the file is kept for history only
+- `clevercloud/rust.json` **is** picked up by the platform at build time (build log: `Configuration file detected: …/clevercloud/rust.json`); the Rust runtime itself is configured through environment variables — nothing indicates that its `appIsToBeBuilt` key changes the runtime's behaviour
 - Migrations are applied automatically at startup via `sqlx::migrate!()` — no manual migration step needed
 - The binary listens on `0.0.0.0:$PORT` as required by Clever Cloud
 - First build is slow (~3–5 min) — Clever Cloud caches compiled artifacts for subsequent deploys
