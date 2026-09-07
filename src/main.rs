@@ -1,5 +1,11 @@
 use axum::{
-    http::header::{CACHE_CONTROL, CONTENT_TYPE},
+    http::{
+        header::{
+            CACHE_CONTROL, CONTENT_SECURITY_POLICY, CONTENT_TYPE, REFERRER_POLICY,
+            X_CONTENT_TYPE_OPTIONS, X_FRAME_OPTIONS,
+        },
+        HeaderValue,
+    },
     response::IntoResponse,
     routing::{get, post},
     Router,
@@ -7,6 +13,7 @@ use axum::{
 use sqlx::postgres::PgPoolOptions;
 use std::net::SocketAddr;
 use std::time::Duration;
+use tower_http::set_header::SetResponseHeaderLayer;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -79,6 +86,31 @@ async fn main() {
         .route("/stats",                    get(handlers::stats))
         .route("/cc-brand.css",             get(brand_css))
         .layer(TraceLayer::new_for_http())
+        // Security headers (TLS/HSTS are handled by the Clever Cloud proxy).
+        // CSP allows the inline <style> of base.html, Google Fonts and the
+        // data: SVG favicon/masks of the brand kit.
+        .layer(SetResponseHeaderLayer::if_not_present(
+            X_CONTENT_TYPE_OPTIONS,
+            HeaderValue::from_static("nosniff"),
+        ))
+        .layer(SetResponseHeaderLayer::if_not_present(
+            REFERRER_POLICY,
+            HeaderValue::from_static("strict-origin-when-cross-origin"),
+        ))
+        .layer(SetResponseHeaderLayer::if_not_present(
+            X_FRAME_OPTIONS,
+            HeaderValue::from_static("DENY"),
+        ))
+        .layer(SetResponseHeaderLayer::if_not_present(
+            CONTENT_SECURITY_POLICY,
+            HeaderValue::from_static(
+                "default-src 'self'; \
+                 style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; \
+                 font-src https://fonts.gstatic.com; \
+                 img-src 'self' data:; \
+                 frame-ancestors 'none'",
+            ),
+        ))
         .with_state(pool);
 
     // Port: Clever Cloud injects PORT automatically
