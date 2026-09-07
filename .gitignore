@@ -14,4 +14,4 @@
 .DS_Store
 
 # Clever Cloud
-# .clever.json  ← keep tracked so the deploy_url is available
+# .clever.json is tracked but committed empty: clever link / clever create rewrite it locally
