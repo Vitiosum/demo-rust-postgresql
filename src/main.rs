@@ -76,15 +76,15 @@ async fn main() {
 
     // Router
     let app = Router::new()
-        .route("/",                         get(handlers::list_incidents))
-        .route("/incidents/new",            get(handlers::new_incident_form))
-        .route("/incidents",                post(handlers::create_incident))
+        .route("/", get(handlers::list_incidents))
+        .route("/incidents/new", get(handlers::new_incident_form))
+        .route("/incidents", post(handlers::create_incident))
         // Axum 0.8 path-parameter syntax: `{id}` (the former `:id` panics at startup)
-        .route("/incidents/{id}",           get(handlers::incident_detail))
-        .route("/incidents/{id}/status",    post(handlers::update_status))
-        .route("/health",                   get(handlers::health))
-        .route("/stats",                    get(handlers::stats))
-        .route("/cc-brand.css",             get(brand_css))
+        .route("/incidents/{id}", get(handlers::incident_detail))
+        .route("/incidents/{id}/status", post(handlers::update_status))
+        .route("/health", get(handlers::health))
+        .route("/stats", get(handlers::stats))
+        .route("/cc-brand.css", get(brand_css))
         .layer(TraceLayer::new_for_http())
         // Security headers (TLS/HSTS are handled by the Clever Cloud proxy).
         // CSP allows the inline <style> of base.html, Google Fonts and the

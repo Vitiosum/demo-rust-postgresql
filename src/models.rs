@@ -100,9 +100,8 @@ impl Platform {
     pub fn from_env() -> Self {
         let g = |k: &str| std::env::var(k).ok().filter(|v| !v.is_empty());
         let or_dash = |v: Option<String>| v.unwrap_or_else(|| "—".into());
-        let cut = |v: Option<String>, n: usize| {
-            or_dash(v.map(|s| s.chars().take(n).collect::<String>()))
-        };
+        let cut =
+            |v: Option<String>, n: usize| or_dash(v.map(|s| s.chars().take(n).collect::<String>()));
         let instance = match (g("INSTANCE_NUMBER"), g("CC_PRETTY_INSTANCE_NAME")) {
             (Some(n), Some(p)) => format!("#{n} · {p}"),
             (Some(n), None) => format!("#{n}"),

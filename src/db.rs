@@ -106,10 +106,10 @@ pub async fn get_stats(pool: &PgPool) -> Result<Stats, sqlx::Error> {
     .await?;
 
     Ok(Stats {
-        total:         row.try_get::<i64, _>("total")?,
-        open:          row.try_get::<i64, _>("open_count")?,
+        total: row.try_get::<i64, _>("total")?,
+        open: row.try_get::<i64, _>("open_count")?,
         investigating: row.try_get::<i64, _>("investigating_count")?,
-        resolved:      row.try_get::<i64, _>("resolved_count")?,
-        critical:      row.try_get::<i64, _>("critical_count")?,
+        resolved: row.try_get::<i64, _>("resolved_count")?,
+        critical: row.try_get::<i64, _>("critical_count")?,
     })
 }

@@ -46,9 +46,7 @@ impl IntoResponse for AppError {
                 tracing::error!("Database error: {e}");
                 (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error").into_response()
             }
-            AppError::NotFound => {
-                (StatusCode::NOT_FOUND, "Incident not found").into_response()
-            }
+            AppError::NotFound => (StatusCode::NOT_FOUND, "Incident not found").into_response(),
             AppError::BadRequest(msg) => (StatusCode::BAD_REQUEST, msg).into_response(),
         }
     }
@@ -102,13 +100,24 @@ pub async fn list_incidents(
     Query(query): Query<FilterQuery>,
 ) -> Result<impl IntoResponse, AppError> {
     let filter = query.status.unwrap_or_default();
-    let db_filter = if filter.is_empty() { None } else { Some(filter.as_str()) };
+    let db_filter = if filter.is_empty() {
+        None
+    } else {
+        Some(filter.as_str())
+    };
     let incidents = db::list_incidents(&pool, db_filter).await?;
-    Ok(HtmlTemplate(IndexTemplate { incidents, filter, cc: Platform::from_env() }))
+    Ok(HtmlTemplate(IndexTemplate {
+        incidents,
+        filter,
+        cc: Platform::from_env(),
+    }))
 }
 
 pub async fn new_incident_form() -> impl IntoResponse {
-    HtmlTemplate(NewTemplate { error: String::new(), cc: Platform::from_env() })
+    HtmlTemplate(NewTemplate {
+        error: String::new(),
+        cc: Platform::from_env(),
+    })
 }
 
 /// Server-side limits, aligned with the schema (title VARCHAR(255),
@@ -139,11 +148,15 @@ pub async fn create_incident(
     }
 
     if form.service.chars().count() > SERVICE_MAX {
-        return Ok(form_error("Le service ne doit pas dépasser 100 caractères."));
+        return Ok(form_error(
+            "Le service ne doit pas dépasser 100 caractères.",
+        ));
     }
 
     if form.description.chars().count() > DESCRIPTION_MAX {
-        return Ok(form_error("La description ne doit pas dépasser 10 000 caractères."));
+        return Ok(form_error(
+            "La description ne doit pas dépasser 10 000 caractères.",
+        ));
     }
 
     if !["low", "medium", "high", "critical"].contains(&form.severity.as_str()) {
@@ -161,7 +174,10 @@ pub async fn incident_detail(
     let incident = db::get_incident(&pool, id)
         .await?
         .ok_or(AppError::NotFound)?;
-    Ok(HtmlTemplate(DetailTemplate { incident, cc: Platform::from_env() }))
+    Ok(HtmlTemplate(DetailTemplate {
+        incident,
+        cc: Platform::from_env(),
+    }))
 }
 
 pub async fn update_status(
@@ -192,5 +208,8 @@ pub async fn health(State(pool): State<PgPool>) -> impl IntoResponse {
 
 pub async fn stats(State(pool): State<PgPool>) -> Result<impl IntoResponse, AppError> {
     let stats = db::get_stats(&pool).await?;
-    Ok(HtmlTemplate(StatsTemplate { stats, cc: Platform::from_env() }))
+    Ok(HtmlTemplate(StatsTemplate {
+        stats,
+        cc: Platform::from_env(),
+    }))
 }
