@@ -21,11 +21,10 @@ impl<T: Template> IntoResponse for HtmlTemplate<T> {
     fn into_response(self) -> Response {
         match self.0.render() {
             Ok(html) => Html(html).into_response(),
-            Err(e) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Template render error: {e}"),
-            )
-                .into_response(),
+            Err(e) => {
+                tracing::error!("Template render error: {e}");
+                (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error").into_response()
+            }
         }
     }
 }
@@ -37,6 +36,7 @@ impl<T: Template> IntoResponse for HtmlTemplate<T> {
 pub enum AppError {
     Database(sqlx::Error),
     NotFound,
+    BadRequest(&'static str),
 }
 
 impl IntoResponse for AppError {
@@ -49,6 +49,7 @@ impl IntoResponse for AppError {
             AppError::NotFound => {
                 (StatusCode::NOT_FOUND, "Incident not found").into_response()
             }
+            AppError::BadRequest(msg) => (StatusCode::BAD_REQUEST, msg).into_response(),
         }
     }
 }
@@ -110,24 +111,43 @@ pub async fn new_incident_form() -> impl IntoResponse {
     HtmlTemplate(NewTemplate { error: String::new(), cc: Platform::from_env() })
 }
 
+/// Server-side limits, aligned with the schema (title VARCHAR(255),
+/// service VARCHAR(100)) so that an oversized field is a form error, not a 500.
+const TITLE_MAX: usize = 255;
+const SERVICE_MAX: usize = 100;
+const DESCRIPTION_MAX: usize = 10_000;
+
+/// Re-display the creation form with an error message.
+fn form_error(message: &str) -> Response {
+    HtmlTemplate(NewTemplate {
+        error: message.to_string(),
+        cc: Platform::from_env(),
+    })
+    .into_response()
+}
+
 pub async fn create_incident(
     State(pool): State<PgPool>,
     Form(form): Form<CreateIncidentForm>,
 ) -> Result<Response, AppError> {
     if form.title.trim().is_empty() || form.service.trim().is_empty() {
-        return Ok(HtmlTemplate(NewTemplate {
-            error: "Le titre et le service sont obligatoires.".to_string(),
-            cc: Platform::from_env(),
-        })
-        .into_response());
+        return Ok(form_error("Le titre et le service sont obligatoires."));
+    }
+
+    if form.title.chars().count() > TITLE_MAX {
+        return Ok(form_error("Le titre ne doit pas dépasser 255 caractères."));
+    }
+
+    if form.service.chars().count() > SERVICE_MAX {
+        return Ok(form_error("Le service ne doit pas dépasser 100 caractères."));
+    }
+
+    if form.description.chars().count() > DESCRIPTION_MAX {
+        return Ok(form_error("La description ne doit pas dépasser 10 000 caractères."));
     }
 
     if !["low", "medium", "high", "critical"].contains(&form.severity.as_str()) {
-        return Ok(HtmlTemplate(NewTemplate {
-            error: "Sévérité invalide.".to_string(),
-            cc: Platform::from_env(),
-        })
-        .into_response());
+        return Ok(form_error("Sévérité invalide."));
     }
 
     let incident = db::create_incident(&pool, &form).await?;
@@ -150,7 +170,7 @@ pub async fn update_status(
     Form(form): Form<UpdateStatusForm>,
 ) -> Result<impl IntoResponse, AppError> {
     if !["open", "investigating", "resolved"].contains(&form.status.as_str()) {
-        return Err(AppError::NotFound);
+        return Err(AppError::BadRequest("Statut invalide"));
     }
     db::update_incident_status(&pool, id, &form.status)
         .await?
@@ -158,8 +178,16 @@ pub async fn update_status(
     Ok(Redirect::to(&format!("/incidents/{}", id)))
 }
 
-pub async fn health() -> impl IntoResponse {
-    (StatusCode::OK, "OK")
+/// Health check used by Clever Cloud (CC_HEALTH_CHECK_PATH=/health): 200 only
+/// when PostgreSQL answers, 503 otherwise.
+pub async fn health(State(pool): State<PgPool>) -> impl IntoResponse {
+    match sqlx::query("SELECT 1").execute(&pool).await {
+        Ok(_) => (StatusCode::OK, "OK"),
+        Err(e) => {
+            tracing::error!("Health check failed: {e}");
+            (StatusCode::SERVICE_UNAVAILABLE, "DB unavailable")
+        }
+    }
 }
 
 pub async fn stats(State(pool): State<PgPool>) -> Result<impl IntoResponse, AppError> {
