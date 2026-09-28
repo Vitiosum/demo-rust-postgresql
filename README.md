@@ -8,15 +8,30 @@
 
 1. Fork this repository
 2. In the Clever Cloud console, create a new **Rust** application — connect your forked repo
-3. Add a **PostgreSQL** add-on and link it to your app — the app reads `POSTGRESQL_ADDON_URI` directly, **do not** copy it into `DATABASE_URL`
-4. Recommended environment variables (console or `clever env set`):
+3. **Before the first deploy**, enable the **dedicated build instance** (size **M**) in the app's *Scalability* tab — it is **disabled by default**. Without it, `cargo build` runs on the XS app instance, pins its CPU at 100 % and the deployment stalls.
+4. Add a **PostgreSQL** add-on and link it to your app — the app reads `POSTGRESQL_ADDON_URI` directly, **do not** copy it into `DATABASE_URL`
+5. Recommended environment variables (console or `clever env set`):
    - `DB_POOL_MAX=2` — pool size; keep `DB_POOL_MAX × instances` below the add-on's connection limit (DEV plan = 5)
    - `RUST_LOG=incident_tracker=info,tower_http=info` (already the built-in default)
    - `CC_HEALTH_CHECK_PATH=/health` — the platform validates the deployment against PostgreSQL
    - `CC_RUST_VERSION=1.94` — pins the toolchain used by the build (minimum declared: 1.85)
-5. Push → Clever Cloud builds with `cargo build --release --locked` and deploys automatically
+6. Push → Clever Cloud builds with `cargo build --release --locked` and deploys automatically
 
-> **Build time:** First deploy takes ~3–5 minutes (Rust compilation). Subsequent deploys reuse the cache and are faster.
+### Same thing with clever-tools
+
+```bash
+clever create --type rust demo-rust-postgresql
+clever scale --build-flavor M
+clever addon create postgresql-addon demo-rust-pg --plan dev --link demo-rust-postgresql
+clever env set CC_HEALTH_CHECK_PATH /health
+clever env set DB_POOL_MAX 2
+clever env set CC_RUST_VERSION 1.94
+clever deploy
+```
+
+`clever create` leaves the dedicated build disabled too: run `clever scale --build-flavor M` **before** `clever deploy`, and check that `clever status` shows `Dedicated build: M`. The build instance is only billed while a build runs. An app created this way deploys from its Clever Cloud git remote: redeploy with `clever deploy`, a push to GitHub does not trigger it.
+
+> **Build time:** ~1–2 minutes on the dedicated M build instance (measured: 1 min 16 s for a first build). Subsequent deploys reuse the build cache.
 
 ---
 
@@ -132,4 +147,5 @@ DATABASE_URL=postgres://localhost/demo_rust PORT=8082 cargo run
 - `clevercloud/rust.json` **is** picked up by the platform at build time (build log: `Configuration file detected: …/clevercloud/rust.json`); the Rust runtime itself is configured through environment variables — nothing indicates that its `appIsToBeBuilt` key changes the runtime's behaviour
 - Migrations are applied automatically at startup via `sqlx::migrate!()` — no manual migration step needed
 - The binary listens on `0.0.0.0:$PORT` as required by Clever Cloud
-- First build is slow (~3–5 min) — Clever Cloud caches compiled artifacts for subsequent deploys
+- The dedicated build instance (M) must be enabled before the first deploy — it is disabled by default, and building on the XS app instance stalls the deployment
+- First build takes ~1–2 min on the dedicated M build instance — Clever Cloud caches compiled artifacts for subsequent deploys

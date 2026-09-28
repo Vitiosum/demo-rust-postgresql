@@ -22,6 +22,7 @@ Cible de déploiement : **Clever Cloud** (runtime Rust natif + add-on PostgreSQL
 - **Build** : `cargo build --release --locked` (runtime Rust, `Cargo.lock` committé) ; `clevercloud/rust.json` est **détecté par la plateforme au build** (log « Configuration file detected »), mais la configuration du runtime Rust passe par les variables d'environnement
 - **Add-on requis** : PostgreSQL (lié à l'application) — l'app lit `POSTGRESQL_ADDON_URI`, ne pas dupliquer dans `DATABASE_URL`
 - **Compilation** : Clever Cloud compile le Rust à chaque déploiement
+- **Build dédié** : **obligatoire**, taille M, à activer **avant** le premier déploiement (`clever scale --build-flavor M` ou onglet Scalabilité de la console). Il est désactivé par défaut : sans lui, `cargo build` tourne sur l'instance XS, le CPU reste à 100 % et le déploiement bloque
 
 ### Variables d'environnement injectées automatiquement par Clever Cloud
 | Variable | Description |
@@ -92,14 +93,16 @@ git commit -m "description"
 git push
 ```
 
-Une fois l'application créée et le dépôt lié, Clever Cloud recompile et redéploie automatiquement après chaque push. La compilation Rust prend environ 3-5 minutes.
+Une fois l'application créée et le dépôt lié, Clever Cloud recompile et redéploie automatiquement après chaque push. La compilation Rust prend environ 1-2 minutes sur le build dédié M (mesuré : 1 min 16 s pour un premier build).
+
+Si l'application a été créée avec `clever create` (remote git Clever, pas de lien GitHub), le push GitHub ne redéploie pas : redéployer avec `clever deploy`.
 
 ---
 
 ## ⚠️ Points de vigilance
 
 - **Axum 0.8** : les paramètres de route s'écrivent `/incidents/{id}` — l'ancienne syntaxe `:id` fait **paniquer l'app au démarrage**
-- La compilation Rust sur Clever Cloud est longue (~3-5 min) — normal
+- Build dédié M obligatoire (désactivé par défaut) : sans lui, la compilation sature l'instance XS et le déploiement bloque
 - SQLx est utilisé en mode runtime (`sqlx::query_as::<_, T>()`, pas de macro `query!`) : aucune base ni `SQLX_OFFLINE` nécessaire au build
 - Pool PostgreSQL : `DB_POOL_MAX` (défaut 2) × instances doit rester sous la limite du plan (DEV = 5) — un redéploiement fait coexister deux instances
 - Arrêt propre sur SIGTERM : les requêtes en vol sont terminées, le pool fermé (`shutdown_signal()` dans `src/main.rs`)
@@ -118,4 +121,4 @@ Une fois l'application créée et le dépôt lié, Clever Cloud recompile et red
 | Panique au démarrage (`Path segments must not start with ':'`) | Route Axum 0.7 (`:id`) | Utiliser `{id}` (Axum 0.8) |
 | Page sans style | Route `/cc-brand.css` absente | Vérifier `brand_css` dans `src/main.rs` |
 | Erreur de compilation | Breaking change Axum/SQLx | Vérifier les logs de build Clever Cloud |
-| Timeout au démarrage | Compilation trop longue | Normal — attendre la fin du build |
+| Déploiement bloqué, CPU à 100 % pendant le build | Build dédié désactivé (défaut), compilation sur l'instance XS | `clever scale --build-flavor M`, puis `clever cancel-deploy` et `clever deploy` |
