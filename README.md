@@ -8,10 +8,12 @@
 
 1. Fork this repository
 2. In the Clever Cloud console, create a new **Rust** application — connect your forked repo
-3. **Before the first deploy**, enable the **dedicated build instance** (size **M**) in the app's *Scalability* tab — it is **disabled by default**. Without it, `cargo build` runs on the XS app instance, pins its CPU at 100 % and the deployment stalls.
-4. Add a **PostgreSQL** add-on and link it to your app — the app reads `POSTGRESQL_ADDON_URI` directly, **do not** copy it into `DATABASE_URL`
+3. **Before the first deploy**, in the app's *Scalability* tab:
+   - enable the **dedicated build instance** (size **M**) — it is **disabled by default**. Without it, `cargo build` runs on the small app instance, pins its CPU at 100 % and the deployment stalls;
+   - enable **auto-scalability**: size **nano → XS**, **1 → 2** instances.
+4. Add a **PostgreSQL** add-on on the **XXS Small Space** plan (`xxs_sml`, the smallest dedicated plan) with **encryption at rest** enabled, and link it to your app. Encryption can only be chosen when the add-on is created; the shared DEV plan offers neither encryption nor more than 5 connections. The app reads `POSTGRESQL_ADDON_URI` directly, **do not** copy it into `DATABASE_URL`.
 5. Recommended environment variables (console or `clever env set`):
-   - `DB_POOL_MAX=2` — pool size; keep `DB_POOL_MAX × instances` below the add-on's connection limit (DEV plan = 5)
+   - `DB_POOL_MAX=2` — pool size; keep `DB_POOL_MAX × instances` below the add-on's connection limit (`xxs_sml` = 45: 2 instances, doubled during a redeploy, × 2 = 8)
    - `RUST_LOG=incident_tracker=info,tower_http=info` (already the built-in default)
    - `CC_HEALTH_CHECK_PATH=/health` — the platform validates the deployment against PostgreSQL
    - `CC_RUST_VERSION=1.94` — pins the toolchain used by the build (minimum declared: 1.85)
@@ -22,14 +24,18 @@
 ```bash
 clever create --type rust demo-rust-postgresql
 clever scale --build-flavor M
-clever addon create postgresql-addon demo-rust-pg --plan dev --link demo-rust-postgresql
+clever scale --flavor nano
+clever scale --min-flavor nano --max-flavor XS --min-instances 1 --max-instances 2
+clever addon create postgresql-addon demo-rust-db --plan xxs_sml --option encryption=true --link demo-rust-postgresql --yes
 clever env set CC_HEALTH_CHECK_PATH /health
 clever env set DB_POOL_MAX 2
 clever env set CC_RUST_VERSION 1.94
 clever deploy
 ```
 
-`clever create` leaves the dedicated build disabled too: run `clever scale --build-flavor M` **before** `clever deploy`, and check that `clever status` shows `Dedicated build: M`. The build instance is only billed while a build runs. An app created this way deploys from its Clever Cloud git remote: redeploy with `clever deploy`, a push to GitHub does not trigger it.
+`clever create` leaves the dedicated build disabled too: run `clever scale --build-flavor M` **before** `clever deploy`, and check that `clever status` shows `Dedicated build: M`. The build instance is only billed while a build runs. Set the fixed `nano` size before the auto-scalability range: `--min-flavor` alone does not shrink an instance that already runs at XS. After the deploy, `clever status` should show `running (1*nano)`, `Scalers: 1 to 2`, `Sizes: nano to XS`. An app created this way deploys from its Clever Cloud git remote: redeploy with `clever deploy`, a push to GitHub does not trigger it.
+
+To move an existing app from a DEV database to an encrypted one: create the `xxs_sml` add-on with `--option encryption=true`, unlink the DEV add-on (`clever service unlink-addon <id>`), link the new one (`clever service link-addon <id>`), then `clever restart` — the migrations recreate the schema at startup (data is not copied).
 
 > **Build time:** ~1–2 minutes on the dedicated M build instance (measured: 1 min 16 s for a first build). Subsequent deploys reuse the build cache.
 
@@ -115,7 +121,7 @@ DATABASE_URL=postgres://localhost/demo_rust PORT=8082 cargo run
 | `POSTGRESQL_ADDON_URI` | ✅ (Clever) | Injected by the linked PostgreSQL add-on; read when `DATABASE_URL` is absent |
 | `DATABASE_URL` | ✅ (local) | PostgreSQL connection string for local runs (takes precedence if set) |
 | `PORT`         | auto     | Injected by Clever Cloud (default: 8080)                |
-| `DB_POOL_MAX`  | —        | Max pool connections (default: 2). Rule: `DB_POOL_MAX × instances ≤ add-on limit` (DEV plan = 5) |
+| `DB_POOL_MAX`  | —        | Max pool connections (default: 2). Rule: `DB_POOL_MAX × instances ≤ add-on limit` (`xxs_sml` = 45, DEV = 5) |
 | `RUST_LOG`     | —        | Log filter (default: `incident_tracker=info,tower_http=info`) |
 | `CC_HEALTH_CHECK_PATH` | — (Clever) | Set to `/health` so the platform checks PostgreSQL before routing traffic |
 | `CC_RUST_VERSION` | — (Clever) | Pins the Rust toolchain used by the build (e.g. `1.94`) |
@@ -143,9 +149,11 @@ DATABASE_URL=postgres://localhost/demo_rust PORT=8082 cargo run
 ## Deployment Notes
 
 - The PostgreSQL add-on must be linked before the first deploy (`POSTGRESQL_ADDON_URI`) — the app exits at startup without it
-- Pool sizing: `DB_POOL_MAX` (default 2) × number of instances must stay below the add-on's connection limit — a redeploy briefly runs two instances
+- Database: `xxs_sml` plan with encryption at rest (daily backups, 7 retained); encryption is chosen at creation only and the DEV plan does not offer it
+- Pool sizing: `DB_POOL_MAX` (default 2) × number of instances must stay below the add-on's connection limit — a redeploy briefly doubles the instances (up to 4 with a 2-instance max: 4 × 2 = 8 ≤ 45)
 - `clevercloud/rust.json` **is** picked up by the platform at build time (build log: `Configuration file detected: …/clevercloud/rust.json`); the Rust runtime itself is configured through environment variables — nothing indicates that its `appIsToBeBuilt` key changes the runtime's behaviour
 - Migrations are applied automatically at startup via `sqlx::migrate!()` — no manual migration step needed
 - The binary listens on `0.0.0.0:$PORT` as required by Clever Cloud
-- The dedicated build instance (M) must be enabled before the first deploy — it is disabled by default, and building on the XS app instance stalls the deployment
+- The dedicated build instance (M) must be enabled before the first deploy — it is disabled by default, and building on the nano/XS app instance stalls the deployment
+- Auto-scalability: nano → XS, 1 → 2 instances — enough for a demo, the Rust binary idles well within a nano instance
 - First build takes ~1–2 min on the dedicated M build instance — Clever Cloud caches compiled artifacts for subsequent deploys

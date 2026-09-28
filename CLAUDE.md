@@ -21,6 +21,8 @@ Cible de déploiement : **Clever Cloud** (runtime Rust natif + add-on PostgreSQL
 - **Type d'app** : Rust
 - **Build** : `cargo build --release --locked` (runtime Rust, `Cargo.lock` committé) ; `clevercloud/rust.json` est **détecté par la plateforme au build** (log « Configuration file detected »), mais la configuration du runtime Rust passe par les variables d'environnement
 - **Add-on requis** : PostgreSQL (lié à l'application) — l'app lit `POSTGRESQL_ADDON_URI`, ne pas dupliquer dans `DATABASE_URL`
+- **Plan PostgreSQL** : `xxs_sml` (plus petit plan dédié, 45 connexions, sauvegardes quotidiennes) **avec chiffrement au repos** (`--option encryption=true`, uniquement à la création) — jamais le plan DEV, qui n'offre pas le chiffrement
+- **Scalabilité** : autoscalabilité nano → XS, 1 → 2 instances (`clever scale --flavor nano`, puis `--min-flavor nano --max-flavor XS --min-instances 1 --max-instances 2`)
 - **Compilation** : Clever Cloud compile le Rust à chaque déploiement
 - **Build dédié** : **obligatoire**, taille M, à activer **avant** le premier déploiement (`clever scale --build-flavor M` ou onglet Scalabilité de la console). Il est désactivé par défaut : sans lui, `cargo build` tourne sur l'instance XS, le CPU reste à 100 % et le déploiement bloque
 
@@ -33,7 +35,7 @@ Cible de déploiement : **Clever Cloud** (runtime Rust natif + add-on PostgreSQL
 ### Variables à poser (console ou `clever env set`)
 | Variable | Valeur | Rôle |
 |---|---|---|
-| `DB_POOL_MAX` | `2` | Taille du pool ; règle `DB_POOL_MAX × instances ≤ connexions du plan` (DEV = 5) |
+| `DB_POOL_MAX` | `2` | Taille du pool ; règle `DB_POOL_MAX × instances ≤ connexions du plan` (`xxs_sml` = 45, DEV = 5) |
 | `RUST_LOG` | `incident_tracker=info,tower_http=info` | Filtre de logs (défaut intégré identique) |
 | `CC_HEALTH_CHECK_PATH` | `/health` | La plateforme valide le déploiement contre PostgreSQL |
 | `CC_RUST_VERSION` | `1.94` | Épingle la toolchain de build (minimum déclaré : 1.85) |
@@ -104,7 +106,7 @@ Si l'application a été créée avec `clever create` (remote git Clever, pas de
 - **Axum 0.8** : les paramètres de route s'écrivent `/incidents/{id}` — l'ancienne syntaxe `:id` fait **paniquer l'app au démarrage**
 - Build dédié M obligatoire (désactivé par défaut) : sans lui, la compilation sature l'instance XS et le déploiement bloque
 - SQLx est utilisé en mode runtime (`sqlx::query_as::<_, T>()`, pas de macro `query!`) : aucune base ni `SQLX_OFFLINE` nécessaire au build
-- Pool PostgreSQL : `DB_POOL_MAX` (défaut 2) × instances doit rester sous la limite du plan (DEV = 5) — un redéploiement fait coexister deux instances
+- Pool PostgreSQL : `DB_POOL_MAX` (défaut 2) × instances doit rester sous la limite du plan (`xxs_sml` = 45) — un redéploiement double brièvement les instances (jusqu'à 4 avec 2 max : 4 × 2 = 8)
 - Arrêt propre sur SIGTERM : les requêtes en vol sont terminées, le pool fermé (`shutdown_signal()` dans `src/main.rs`)
 - Validation serveur : title ≤ 255, service ≤ 100, description ≤ 10 000 caractères (erreur de formulaire, jamais de 500)
 - Les migrations sont exécutées automatiquement au démarrage (`migrate!`)
