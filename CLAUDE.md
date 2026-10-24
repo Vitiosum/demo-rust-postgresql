@@ -53,6 +53,8 @@ Cible de déploiement : **Clever Cloud** (runtime Rust natif + add-on PostgreSQL
 
 Scénario de démo : modifier `ANNOUNCEMENT` ou `SLA_CRITICAL_MINUTES` dans la console, `clever restart`, recharger la page.
 
+Avant un tournage : `./scripts/reset-demo.sh` recharge la base de l'app liée avec les 9 incidents de `scripts/demo-seed.sql` (dates relatives à l'instant présent : 3 open, 2 investigating, 4 resolved, 3 « SLA dépassé »).
+
 ---
 
 ## 🛠️ Stack
