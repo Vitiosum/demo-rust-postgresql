@@ -127,6 +127,7 @@ DATABASE_URL=postgres://localhost/demo_rust PORT=8082 cargo run
 | `RUST_LOG`     | —        | Log filter (default: `incident_tracker=info,tower_http=info`) |
 | `CC_HEALTH_CHECK_PATH` | — (Clever) | Set to `/health` so the platform checks PostgreSQL before routing traffic |
 | `CC_CACHE_DEPENDENCIES` | — (Clever) | `true`: reuse `target/` and the cargo registry between builds |
+| `CC_IGNORE_FROM_BUILDCACHE` | — (Clever) | `target/release/deps:target/release/build:target/release/.fingerprint:target/release/incremental`: lighter build cache archive (measured deploys: 128 s cold → ~80 s with the dependency cache) |
 | `CC_RUSTUP_CHANNEL` | — (Clever) | Optional toolchain pin (default `stable`, e.g. `1.94.0`) |
 | `APP_ENV` | `local` | Demo: environment pill in the page console (gradient when `production`) |
 | `TEAM_NAME` | `Équipe SRE` | Demo: on-call team under the title |

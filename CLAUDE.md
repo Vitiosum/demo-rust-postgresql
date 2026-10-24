@@ -39,6 +39,7 @@ Cible de déploiement : **Clever Cloud** (runtime Rust natif + add-on PostgreSQL
 | `RUST_LOG` | `incident_tracker=info,tower_http=info` | Filtre de logs (défaut intégré identique) |
 | `CC_HEALTH_CHECK_PATH` | `/health` | La plateforme valide le déploiement contre PostgreSQL |
 | `CC_CACHE_DEPENDENCIES` | `true` | Réutilise `target/` et le registre cargo d'un déploiement à l'autre (build bien plus court) |
+| `CC_IGNORE_FROM_BUILDCACHE` | `target/release/deps:target/release/build:target/release/.fingerprint:target/release/incremental` | Allège l'archive de build (le binaire suffit au run ; les dépendances sont déjà dans le cache dédié) |
 
 `CC_RUST_VERSION` n'existe pas (ignorée, le build prend la `stable` du jour) : pour épingler la toolchain, c'est `CC_RUSTUP_CHANNEL` (ex. `1.94.0`), au prix d'une installation rustup si la version n'est pas sur l'image.
 
@@ -114,6 +115,17 @@ Une fois l'application créée et le dépôt lié, Clever Cloud recompile et red
 Si l'application a été créée avec `clever create` (remote git Clever, pas de lien GitHub), le push GitHub ne redéploie pas : redéployer avec `clever deploy`.
 
 ---
+
+## ⏱️ Durée de déploiement (mesurée le 2026-10-25, build dédié M)
+
+| Déploiement | Total | `cargo build` |
+|---|---|---|
+| Premier (aucun cache) | 128 s | 60 s, 181 crates |
+| `CC_CACHE_DEPENDENCIES=true`, premier passage (crée le cache) | 106 s | 39 s |
+| Cache de dépendances réutilisé + features réduites | 80 s | 12,7 s, seule l'app recompilée |
+| Changement de variable + `clever restart` (pas de build) | 35 s | — |
+
+Incompressibles : démarrage des VM de build et de run (~15 s chacune), health check (~3 s). L'app démarre en < 100 ms (pool + migrations).
 
 ## ⚠️ Points de vigilance
 
