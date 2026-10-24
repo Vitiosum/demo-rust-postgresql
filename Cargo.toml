@@ -9,15 +9,16 @@ name = "incident-tracker"
 path = "src/main.rs"
 
 [dependencies]
-axum          = "0.8"
-tokio         = { version = "1", features = ["full"] }
-sqlx          = { version = "0.8", features = ["runtime-tokio-rustls", "postgres", "uuid", "chrono", "migrate"] }
+axum          = { version = "0.8", default-features = false, features = ["http1", "tokio", "form", "query"] }
+tokio         = { version = "1", features = ["rt-multi-thread", "macros", "net", "signal"] }
+# TLS (rustls) conservé : sslmode=prefer (défaut sqlx) négocie TLS si l'add-on le propose.
+sqlx          = { version = "0.8", default-features = false, features = ["runtime-tokio", "tls-rustls", "postgres", "uuid", "chrono", "migrate", "macros", "derive"] }
 serde         = { version = "1", features = ["derive"] }
-askama        = "0.12"
-uuid          = { version = "1", features = ["v4", "serde"] }
-chrono        = "0.4"
+askama        = { version = "0.12", default-features = false }
+uuid          = { version = "1", features = ["serde"] }
+chrono        = { version = "0.4", default-features = false, features = ["clock", "std"] }
 tracing       = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-subscriber = { version = "0.3", default-features = false, features = ["std", "registry", "fmt", "ansi", "env-filter"] }
 dotenvy       = "0.15"
 tower-http    = { version = "0.6", features = ["trace", "set-header"] }
 
