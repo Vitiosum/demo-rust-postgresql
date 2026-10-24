@@ -63,7 +63,9 @@ Cible de déploiement : **Clever Cloud** (runtime Rust natif + add-on PostgreSQL
 - Le CSS est embarqué dans le binaire (`include_str!`) et servi sur `/cc-brand.css` — aucune dépendance ajoutée (pas de `tower-http/fs`).
 - Logo et badge certification : SVG inline via `templates/partials/cc-logo.html` et `cc-badge.html`. Ces partials ne doivent contenir **ni `{{` ni `{%`** (Askama les parse).
 - Chaque struct `#[derive(Template)]` reçoit `cc: Platform` (`models::Platform::from_env()`) ; dans les templates : `{% if cc.live %}`, `{{ cc.app_name }}`.
-- Structure de page (identique à la référence du kit) : topbar → héro → bloc certification (accueil uniquement) → contenu + panneau « Vu depuis Clever Cloud » → « Ce que Clever Cloud fait » → footer.
+- Structure de l'accueil (refonte vidéo, 2026-10) : topbar → tableau de crise (titre « N incidents en cours. », silhouette d'une barre par incident selon la sévérité, console de déploiement avec les variables Clever) → liste (liseré de sévérité, statut, âge relatif) → bloc certification Academy (`partials/cert.html`) → footer.
+- Certification mise en avant partout : bouton « Se certifier Clever Cloud » dans le premier écran, `partials/cert.html` sur l'accueil et /stats, `partials/cert-mini.html` sur le détail. Le badge SVG porte des `id` : ne l'inclure qu'une fois par page.
+- Couleurs de sévérité et de statut : variables `--sev-*` / `--st-*` dans `base.html`, appliquées par les classes `is-<severity>` / `is-<status>` (valeurs validées côté serveur).
 - Textes du chrome en français ; libellés techniques (`open`, `critical`…) en anglais.
 - Spec : `docs/superpowers/specs/2026-09-06-clever-brand-design.md`.
 

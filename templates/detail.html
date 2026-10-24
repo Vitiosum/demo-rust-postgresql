@@ -6,42 +6,53 @@
 {% block content %}
 <section class="cc-section">
   <div class="cc-container">
-    <a class="it-back" href="/">← Retour aux incidents</a>
+    <a class="it-back" href="/">← Tous les incidents</a>
 
-    <div class="cc-card cc-card--pad cc-card--accent cc-reveal" style="--i:1">
-      <div class="cc-card__label">Incident · <span class="cc-mono">{{ incident.short_id() }}</span></div>
-      <h1 class="cc-section__title cc-mt-1">{{ incident.title }}</h1>
-      <div class="cc-flex cc-mt-2">
-        <span class="cc-badge {{ incident.severity_class() }}">{{ incident.severity }}</span>
-        <span class="cc-badge {{ incident.status_class() }}">{{ incident.status }}</span>
-      </div>
+    <div class="it-detail">
+      <article class="cc-reveal is-{{ incident.severity }}" style="--i:0">
+        <div class="it-detail__head">
+          <span class="it-sev">{{ incident.severity }}</span>
+          <h1>{{ incident.title }}</h1>
+          <div class="it-detail__sub">
+            <span class="it-status-dot is-{{ incident.status }}">{{ incident.status }}</span>
+            <span class="it-tag">{{ incident.service }}</span>
+            <span>ouvert {{ incident.age_str() }}</span>
+          </div>
+        </div>
+        {% if incident.has_description() %}
+        <p class="it-desc">{{ incident.description_text() }}</p>
+        {% else %}
+        <p class="it-desc cc-muted">Pas de description.</p>
+        {% endif %}
+      </article>
 
-      {% if incident.has_description() %}
-      <div class="cc-mt-3">
-        <div class="cc-card__label">Description</div>
-        <p class="it-desc cc-mt-1">{{ incident.description_text() }}</p>
-      </div>
-      {% endif %}
-
-      <dl class="it-meta cc-mt-3">
-        <div><dt>Service</dt><dd>{{ incident.service }}</dd></div>
-        <div><dt>Sévérité</dt><dd>{{ incident.severity }}</dd></div>
-        <div><dt>Créé le</dt><dd class="cc-mono">{{ incident.created_str() }}</dd></div>
-        <div><dt>Mis à jour le</dt><dd class="cc-mono">{{ incident.updated_str() }}</dd></div>
-        <div><dt>Identifiant</dt><dd class="cc-mono cc-muted">{{ incident.id }}</dd></div>
-      </dl>
-    </div>
-
-    <div class="cc-card cc-card--pad cc-mt-2 cc-reveal" style="--i:2">
-      <div class="cc-section__head">
-        <h2 class="cc-card__title">Changer le statut</h2>
-        <span class="cc-section__sub">UPDATE … RETURNING via SQLx</span>
-      </div>
-      <form class="it-status" method="post" action="/incidents/{{ incident.id }}/status">
-        <button class="cc-btn cc-btn--sm{% if incident.status == "open" %} is-current{% endif %}" type="submit" name="status" value="open">open</button>
-        <button class="cc-btn cc-btn--sm{% if incident.status == "investigating" %} is-current{% endif %}" type="submit" name="status" value="investigating">investigating</button>
-        <button class="cc-btn cc-btn--sm{% if incident.status == "resolved" %} is-current{% endif %}" type="submit" name="status" value="resolved">resolved</button>
-      </form>
+      <aside class="cc-reveal" style="--i:1">
+        <div class="cc-card cc-card--pad">
+          <h2 class="cc-card__title">Avancement</h2>
+          <form method="post" action="/incidents/{{ incident.id }}/status">
+            <ol class="it-steps cc-mt-2">
+              <li class="{% if incident.status_step() == 0 %}is-current{% else %}is-done{% endif %}">
+                <span class="it-step__dot" aria-hidden="true"></span>
+                <button type="submit" name="status" value="open"{% if incident.status_step() == 0 %} aria-current="step"{% endif %}><span class="it-step__name">open</span><span class="it-step__hint">Signalé, à prendre en charge</span></button>
+              </li>
+              <li class="{% if incident.status_step() == 1 %}is-current{% else if incident.status_step() > 1 %}is-done{% endif %}">
+                <span class="it-step__dot" aria-hidden="true"></span>
+                <button type="submit" name="status" value="investigating"{% if incident.status_step() == 1 %} aria-current="step"{% endif %}><span class="it-step__name">investigating</span><span class="it-step__hint">Analyse en cours</span></button>
+              </li>
+              <li class="{% if incident.status_step() == 2 %}is-current{% endif %}">
+                <span class="it-step__dot" aria-hidden="true"></span>
+                <button type="submit" name="status" value="resolved"{% if incident.status_step() == 2 %} aria-current="step"{% endif %}><span class="it-step__name">resolved</span><span class="it-step__hint">Corrigé et vérifié</span></button>
+              </li>
+            </ol>
+          </form>
+          <dl class="it-facts">
+            <div><dt>Créé le</dt><dd>{{ incident.created_str() }}</dd></div>
+            <div><dt>Mis à jour le</dt><dd>{{ incident.updated_str() }}</dd></div>
+            <div><dt>Identifiant</dt><dd>{{ incident.short_id() }}</dd></div>
+          </dl>
+        </div>
+{% include "partials/cert-mini.html" %}
+      </aside>
     </div>
   </div>
 </section>

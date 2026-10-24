@@ -15,25 +15,6 @@ pub struct Incident {
 }
 
 impl Incident {
-    /// Clever Brand Kit badge modifier for the severity level.
-    pub fn severity_class(&self) -> &'static str {
-        match self.severity.as_str() {
-            "critical" => "cc-badge--critical",
-            "high" => "cc-badge--danger",
-            "medium" => "cc-badge--warn",
-            _ => "cc-badge--neutral",
-        }
-    }
-
-    /// Clever Brand Kit badge modifier for the workflow status.
-    pub fn status_class(&self) -> &'static str {
-        match self.status.as_str() {
-            "open" => "cc-badge--info",
-            "investigating" => "cc-badge--warn",
-            _ => "cc-badge--ok",
-        }
-    }
-
     /// First 8 characters of the UUID, for compact list rows.
     pub fn short_id(&self) -> String {
         self.id.to_string().chars().take(8).collect()
@@ -45,6 +26,26 @@ impl Incident {
 
     pub fn updated_str(&self) -> String {
         self.updated_at.format("%Y-%m-%d %H:%M UTC").to_string()
+    }
+
+    /// Human-readable age, e.g. "il y a 12 min".
+    pub fn age_str(&self) -> String {
+        let secs = (Utc::now() - self.created_at).num_seconds().max(0);
+        match secs {
+            0..=59 => "à l'instant".into(),
+            60..=3_599 => format!("il y a {} min", secs / 60),
+            3_600..=86_399 => format!("il y a {} h", secs / 3_600),
+            _ => format!("il y a {} j", secs / 86_400),
+        }
+    }
+
+    /// Position in the open → investigating → resolved workflow.
+    pub fn status_step(&self) -> u8 {
+        match self.status.as_str() {
+            "open" => 0,
+            "investigating" => 1,
+            _ => 2,
+        }
     }
 
     pub fn has_description(&self) -> bool {
@@ -81,6 +82,24 @@ pub struct Stats {
     pub investigating: i64,
     pub resolved: i64,
     pub critical: i64,
+    pub high: i64,
+    pub medium: i64,
+    pub low: i64,
+}
+
+impl Stats {
+    /// Share of the total, in percent, for proportional bars.
+    pub fn pct(&self, n: &i64) -> i64 {
+        if self.total == 0 {
+            0
+        } else {
+            n * 100 / self.total
+        }
+    }
+
+    pub fn active(&self) -> i64 {
+        self.open + self.investigating
+    }
 }
 
 /// What Clever Cloud injects into the runtime environment.

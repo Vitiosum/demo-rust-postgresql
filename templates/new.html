@@ -1,55 +1,50 @@
 {% extends "base.html" %}
 
-{% block title %}Nouvel incident{% endblock %}
+{% block title %}Déclarer un incident{% endblock %}
 {% block nav_incidents %} is-active{% endblock %}
 
 {% block content %}
 <section class="cc-section">
   <div class="cc-container">
-    <a class="it-back" href="/">← Retour aux incidents</a>
-    <div class="cc-section__head">
-      <h1 class="cc-section__title">Nouvel incident</h1>
-      <span class="cc-section__sub">Insertion dans PostgreSQL via SQLx</span>
-    </div>
+    <a class="it-back" href="/">← Tous les incidents</a>
+    <h1 class="it-board__title" style="font-size: clamp(32px, 4.4vw, 52px); margin-bottom: 28px">Déclarer un incident</h1>
 
-    <div class="cc-card cc-card--pad cc-reveal" style="--i:1">
-      <form class="it-form" method="post" action="/incidents">
-        {% if !error.is_empty() %}
-        <div class="cc-error" role="alert">{{ error }}</div>
-        {% endif %}
+    <form class="it-form cc-reveal" style="--i:1" method="post" action="/incidents">
+      {% if !error.is_empty() %}
+      <div class="cc-error" role="alert">{{ error }}</div>
+      {% endif %}
 
+      <div class="it-form__row">
         <div class="cc-field">
-          <label class="cc-label" for="title">Titre *</label>
-          <input class="cc-input" type="text" id="title" name="title" placeholder="Résumé court de l'incident" required maxlength="255">
+          <label class="cc-label" for="title">Titre</label>
+          <input class="cc-input" type="text" id="title" name="title" placeholder="ex. Latence élevée sur le paiement" required maxlength="255" value="{{ title }}" autofocus>
         </div>
-
         <div class="cc-field">
-          <label class="cc-label" for="service">Service *</label>
-          <input class="cc-input" type="text" id="service" name="service" placeholder="ex. api-gateway, auth, billing" required maxlength="100">
+          <label class="cc-label" for="service">Service touché</label>
+          <input class="cc-input" type="text" id="service" name="service" placeholder="ex. api-gateway" required maxlength="100" value="{{ service }}">
         </div>
+      </div>
 
-        <div class="cc-field">
-          <label class="cc-label" for="severity">Sévérité *</label>
-          <select class="cc-select" id="severity" name="severity">
-            <option value="low">low</option>
-            <option value="medium" selected>medium</option>
-            <option value="high">high</option>
-            <option value="critical">critical</option>
-          </select>
+      <fieldset class="it-sevpick">
+        <legend class="cc-label">Sévérité</legend>
+        <div class="it-sevpick__opts">
+          <input type="radio" id="sev-low" name="severity" value="low"{% if severity == "low" %} checked{% endif %}><label class="is-low" for="sev-low"><b>low</b><span>Gêne mineure</span></label>
+          <input type="radio" id="sev-medium" name="severity" value="medium"{% if severity == "medium" %} checked{% endif %}><label class="is-medium" for="sev-medium"><b>medium</b><span>Fonction dégradée</span></label>
+          <input type="radio" id="sev-high" name="severity" value="high"{% if severity == "high" %} checked{% endif %}><label class="is-high" for="sev-high"><b>high</b><span>Service perturbé</span></label>
+          <input type="radio" id="sev-critical" name="severity" value="critical"{% if severity == "critical" %} checked{% endif %}><label class="is-critical" for="sev-critical"><b>critical</b><span>Service à l'arrêt</span></label>
         </div>
+      </fieldset>
 
-        <div class="cc-field">
-          <label class="cc-label" for="description">Description</label>
-          <textarea class="cc-textarea" id="description" name="description" placeholder="Que s'est-il passé ? Quel impact ?"></textarea>
-          <span class="cc-hint">Optionnel — contexte, impact, premières pistes.</span>
-        </div>
+      <div class="cc-field">
+        <label class="cc-label" for="description">Description <span class="cc-muted">(optionnelle)</span></label>
+        <textarea class="cc-textarea" id="description" name="description" rows="5" placeholder="Ce qui se passe, depuis quand, quel impact.">{{ description }}</textarea>
+      </div>
 
-        <div class="it-actions">
-          <button class="cc-btn cc-btn--gradient" type="submit">Créer l'incident</button>
-          <a class="cc-btn cc-btn--ghost" href="/">Annuler</a>
-        </div>
-      </form>
-    </div>
+      <div class="it-actions">
+        <button class="cc-btn cc-btn--gradient" type="submit">Déclarer l'incident</button>
+        <a class="cc-btn cc-btn--ghost" href="/">Annuler</a>
+      </div>
+    </form>
   </div>
 </section>
 {% endblock %}

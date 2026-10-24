@@ -13,6 +13,7 @@ pub async fn list_incidents(
                FROM incidents
                WHERE status = $1
                ORDER BY
+                 status = 'resolved',
                  CASE severity
                    WHEN 'critical' THEN 1
                    WHEN 'high'     THEN 2
@@ -29,6 +30,7 @@ pub async fn list_incidents(
             r#"SELECT id, title, description, service, severity, status, created_at, updated_at
                FROM incidents
                ORDER BY
+                 status = 'resolved',
                  CASE severity
                    WHEN 'critical' THEN 1
                    WHEN 'high'     THEN 2
@@ -99,7 +101,10 @@ pub async fn get_stats(pool: &PgPool) -> Result<Stats, sqlx::Error> {
                COUNT(*) FILTER (WHERE status = 'open')       AS open_count,
                COUNT(*) FILTER (WHERE status = 'investigating') AS investigating_count,
                COUNT(*) FILTER (WHERE status = 'resolved')   AS resolved_count,
-               COUNT(*) FILTER (WHERE severity = 'critical') AS critical_count
+               COUNT(*) FILTER (WHERE severity = 'critical') AS critical_count,
+               COUNT(*) FILTER (WHERE severity = 'high')     AS high_count,
+               COUNT(*) FILTER (WHERE severity = 'medium')   AS medium_count,
+               COUNT(*) FILTER (WHERE severity = 'low')      AS low_count
            FROM incidents"#,
     )
     .fetch_one(pool)
@@ -111,5 +116,8 @@ pub async fn get_stats(pool: &PgPool) -> Result<Stats, sqlx::Error> {
         investigating: row.try_get::<i64, _>("investigating_count")?,
         resolved: row.try_get::<i64, _>("resolved_count")?,
         critical: row.try_get::<i64, _>("critical_count")?,
+        high: row.try_get::<i64, _>("high_count")?,
+        medium: row.try_get::<i64, _>("medium_count")?,
+        low: row.try_get::<i64, _>("low_count")?,
     })
 }

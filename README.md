@@ -74,7 +74,7 @@ To move an existing app from a DEV database to an encrypted one: create the `xxs
 
 The UI uses the shared **Clever Brand Kit**: a single stylesheet (`static/cc-brand.css`, tokens `--cc-*`, Plus Jakarta Sans + JetBrains Mono via Google Fonts with system fallbacks), the official Clever Cloud logo and the certification badge inlined as Askama partials (`templates/partials/`). No dependency was added: the CSS is embedded in the binary with `include_str!` and served on `/cc-brand.css`.
 
-Page structure (identical to the kit's reference page): sticky topbar → hero → **certification block** → demo content + platform panel → « Ce que Clever Cloud fait » → footer. App-specific styles live in a short `<style>` block in `templates/base.html`; `cc-brand.css` is never edited.
+Page structure (video redesign, 2026-10): sticky topbar → incident board (live count, one bar per incident by severity, Clever Cloud deployment console with the injected platform variables) → incident list → **Clever Cloud Academy certification block** → footer. The certification is also pushed from the first screen (button), the detail page (compact card) and /stats. App-specific styles live in a short `<style>` block in `templates/base.html`; `cc-brand.css` is never edited.
 
 Spec: `docs/superpowers/specs/2026-09-06-clever-brand-design.md`.
 

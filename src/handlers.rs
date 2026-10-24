@@ -67,6 +67,7 @@ impl From<sqlx::Error> for AppError {
 struct IndexTemplate {
     incidents: Vec<Incident>,
     filter: String, // "" = all, "open", "investigating", "resolved"
+    stats: Stats,
     cc: Platform,
 }
 
@@ -74,6 +75,10 @@ struct IndexTemplate {
 #[template(path = "new.html")]
 struct NewTemplate {
     error: String, // empty string = no error
+    title: String,
+    service: String,
+    severity: String,
+    description: String,
     cc: Platform,
 }
 
@@ -106,9 +111,11 @@ pub async fn list_incidents(
         Some(filter.as_str())
     };
     let incidents = db::list_incidents(&pool, db_filter).await?;
+    let stats = db::get_stats(&pool).await?;
     Ok(HtmlTemplate(IndexTemplate {
         incidents,
         filter,
+        stats,
         cc: Platform::from_env(),
     }))
 }
@@ -116,6 +123,10 @@ pub async fn list_incidents(
 pub async fn new_incident_form() -> impl IntoResponse {
     HtmlTemplate(NewTemplate {
         error: String::new(),
+        title: String::new(),
+        service: String::new(),
+        severity: "medium".into(),
+        description: String::new(),
         cc: Platform::from_env(),
     })
 }
@@ -125,11 +136,21 @@ pub async fn new_incident_form() -> impl IntoResponse {
 const TITLE_MAX: usize = 255;
 const SERVICE_MAX: usize = 100;
 const DESCRIPTION_MAX: usize = 10_000;
+const SEVERITIES: [&str; 4] = ["low", "medium", "high", "critical"];
 
-/// Re-display the creation form with an error message.
-fn form_error(message: &str) -> Response {
+/// Re-display the creation form with an error message, keeping what was typed.
+fn form_error(form: &CreateIncidentForm, message: &str) -> Response {
     HtmlTemplate(NewTemplate {
         error: message.to_string(),
+        title: form.title.clone(),
+        service: form.service.clone(),
+        // An invalid value falls back to the default choice.
+        severity: if SEVERITIES.contains(&form.severity.as_str()) {
+            form.severity.clone()
+        } else {
+            "medium".into()
+        },
+        description: form.description.clone(),
         cc: Platform::from_env(),
     })
     .into_response()
@@ -140,27 +161,43 @@ pub async fn create_incident(
     Form(form): Form<CreateIncidentForm>,
 ) -> Result<Response, AppError> {
     if form.title.trim().is_empty() || form.service.trim().is_empty() {
-        return Ok(form_error("Le titre et le service sont obligatoires."));
+        return Ok(form_error(
+            &form,
+            "Le titre et le service sont obligatoires.",
+        ));
+    }
+
+    // PostgreSQL rejects NUL bytes in text columns: a form error, not a 500.
+    if [&form.title, &form.service, &form.description]
+        .iter()
+        .any(|f| f.contains('\0'))
+    {
+        return Ok(form_error(&form, "Caractère invalide dans le formulaire."));
     }
 
     if form.title.chars().count() > TITLE_MAX {
-        return Ok(form_error("Le titre ne doit pas dépasser 255 caractères."));
+        return Ok(form_error(
+            &form,
+            "Le titre ne doit pas dépasser 255 caractères.",
+        ));
     }
 
     if form.service.chars().count() > SERVICE_MAX {
         return Ok(form_error(
+            &form,
             "Le service ne doit pas dépasser 100 caractères.",
         ));
     }
 
     if form.description.chars().count() > DESCRIPTION_MAX {
         return Ok(form_error(
+            &form,
             "La description ne doit pas dépasser 10 000 caractères.",
         ));
     }
 
-    if !["low", "medium", "high", "critical"].contains(&form.severity.as_str()) {
-        return Ok(form_error("Sévérité invalide."));
+    if !SEVERITIES.contains(&form.severity.as_str()) {
+        return Ok(form_error(&form, "Sévérité invalide."));
     }
 
     let incident = db::create_incident(&pool, &form).await?;
