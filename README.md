@@ -16,7 +16,9 @@
    - `DB_POOL_MAX=2` — pool size; keep `DB_POOL_MAX × instances` below the add-on's connection limit (`xxs_sml` = 45: 2 instances, doubled during a redeploy, × 2 = 8)
    - `RUST_LOG=incident_tracker=info,tower_http=info` (already the built-in default)
    - `CC_HEALTH_CHECK_PATH=/health` — the platform validates the deployment against PostgreSQL
-   - `CC_RUST_VERSION=1.94` — pins the toolchain used by the build (minimum declared: 1.85)
+   - `CC_CACHE_DEPENDENCIES=true` — reuses `target/` and the cargo registry between deployments (much shorter builds)
+   - Optional: `CC_RUSTUP_CHANNEL=1.94.0` pins the toolchain (default `stable`; `CC_RUST_VERSION` does not exist)
+   - Demo variables, read by the app and visible on screen: `APP_ENV`, `TEAM_NAME`, `SLA_CRITICAL_MINUTES`, `ANNOUNCEMENT` (see CLAUDE.md)
 6. Push → Clever Cloud builds with `cargo build --release --locked` and deploys automatically
 
 ### Same thing with clever-tools
@@ -29,7 +31,7 @@ clever scale --min-flavor nano --max-flavor XS --min-instances 1 --max-instances
 clever addon create postgresql-addon demo-rust-db --plan xxs_sml --option encryption=true --link demo-rust-postgresql --yes
 clever env set CC_HEALTH_CHECK_PATH /health
 clever env set DB_POOL_MAX 2
-clever env set CC_RUST_VERSION 1.94
+clever env set CC_CACHE_DEPENDENCIES true
 clever deploy
 ```
 
@@ -124,7 +126,12 @@ DATABASE_URL=postgres://localhost/demo_rust PORT=8082 cargo run
 | `DB_POOL_MAX`  | —        | Max pool connections (default: 2). Rule: `DB_POOL_MAX × instances ≤ add-on limit` (`xxs_sml` = 45, DEV = 5) |
 | `RUST_LOG`     | —        | Log filter (default: `incident_tracker=info,tower_http=info`) |
 | `CC_HEALTH_CHECK_PATH` | — (Clever) | Set to `/health` so the platform checks PostgreSQL before routing traffic |
-| `CC_RUST_VERSION` | — (Clever) | Pins the Rust toolchain used by the build (e.g. `1.94`) |
+| `CC_CACHE_DEPENDENCIES` | — (Clever) | `true`: reuse `target/` and the cargo registry between builds |
+| `CC_RUSTUP_CHANNEL` | — (Clever) | Optional toolchain pin (default `stable`, e.g. `1.94.0`) |
+| `APP_ENV` | `local` | Demo: environment pill in the page console (gradient when `production`) |
+| `TEAM_NAME` | `Équipe SRE` | Demo: on-call team under the title |
+| `SLA_CRITICAL_MINUTES` | `30` | Demo: unresolved critical/high incidents older than this are flagged « SLA dépassé » |
+| `ANNOUNCEMENT` | — | Demo: banner on every page when set |
 | `CC_APP_NAME`, `APP_ID`, `INSTANCE_NUMBER`, `INSTANCE_TYPE`, `CC_PRETTY_INSTANCE_NAME`, `CC_COMMIT_ID`, `CC_DEPLOYMENT_ID` | auto | Injected by Clever Cloud, read-only, displayed in the platform panel |
 
 ---

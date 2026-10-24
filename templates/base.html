@@ -57,14 +57,29 @@
   .it-console__bar span { margin-left: 8px; }
   .it-console__bar .cc-pill { margin-left: auto; }
   .it-console ol { list-style: none; margin: 0; padding: 18px 18px 6px; font-family: var(--cc-mono); font-size: 13px; line-height: 1.55; display: grid; gap: 10px; }
-  .it-console li { display: grid; grid-template-columns: 18px 1fr; gap: 8px; }
-  .it-console li::before { content: "✓"; color: var(--cc-green); font-weight: 700; }
-  .it-console li:first-child::before { content: "$"; color: var(--cc-orange); }
-  .it-console li small { display: block; font-family: var(--cc-font); font-size: 12px; color: var(--cc-muted); }
+  .it-console ol li { display: grid; grid-template-columns: 18px 1fr; gap: 8px; }
+  .it-console ol li::before { content: "✓"; color: var(--cc-green); font-weight: 700; }
+  .it-console ol li:first-child::before { content: "$"; color: var(--cc-orange); }
+  .it-console ol li small { display: block; font-family: var(--cc-font); font-size: 12px; color: var(--cc-muted); }
   .it-console__vars { margin: auto 0 0; padding: 14px 18px 18px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 16px; border-top: 1px dashed var(--cc-border); }
   .it-console__vars dt { font-size: 11.5px; color: var(--cc-muted); }
   .it-console__vars dd { margin: 2px 0 0; font-family: var(--cc-mono); font-size: 13px; color: var(--cc-text); overflow-wrap: anywhere; }
   .it-console__vars dd.is-empty { color: var(--cc-muted); }
+
+  /* Variables de démo (onglet Variables d'environnement de la console Clever) */
+  .it-announce { background: linear-gradient(90deg, #d14836 0%, #cb1c42 50%, #a51050 100%); color: #fff; font-size: 14.5px; font-weight: 600; }
+  .it-announce .cc-container { display: flex; align-items: center; gap: 12px; padding-block: 10px; }
+  .it-announce code { font-family: var(--cc-mono); font-size: 11.5px; font-weight: 500; padding: 2px 8px; border-radius: 6px; background: rgba(14, 17, 36, 0.35); white-space: nowrap; }
+  .it-board__team { display: inline-flex; align-items: center; gap: 8px; margin-top: 14px; font-size: 14px; color: var(--cc-text-2); }
+  .it-board__team::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--cc-green); box-shadow: 0 0 0 4px rgba(17, 190, 169, 0.2); }
+  .it-env { margin-left: auto; font-family: var(--cc-mono); font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px; color: #5fe3d3; border: 1px solid rgba(17, 190, 169, 0.5); background: rgba(17, 190, 169, 0.12); }
+  .it-env.is-production { color: #fff; border-color: transparent; background: linear-gradient(90deg, #d14836 0%, #cb1c42 50%, #a51050 100%); }
+  .it-config { list-style: none; margin: 0; padding: 14px 18px; display: grid; gap: 8px; border-top: 1px dashed var(--cc-border); font-family: var(--cc-mono); font-size: 12.5px; }
+  .it-config li { display: flex; justify-content: space-between; gap: 12px; }
+  .it-config span { color: var(--cc-orange); }
+  .it-config b { font-weight: 500; color: var(--cc-text); text-align: right; overflow-wrap: anywhere; }
+  .it-config b.is-empty { color: var(--cc-muted); }
+  .it-sla { font-size: 12px; font-weight: 700; color: #fff; padding: 1px 8px; border-radius: 6px; background: var(--cc-red); }
 
   /* Liste */
   .it-list-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
@@ -213,6 +228,9 @@
   </div>
 </header>
 
+{% if !cc.announcement.is_empty() %}
+<div class="it-announce" role="status"><div class="cc-container"><code>ANNOUNCEMENT</code><span>{{ cc.announcement }}</span></div></div>
+{% endif %}
 <main>
 {% block content %}{% endblock %}
 </main>

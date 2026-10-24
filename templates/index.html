@@ -11,6 +11,7 @@
         {% if stats.active() == 0 %}Tout est calme.{% else %}{{ stats.active() }} incident{% if stats.active() > 1 %}s{% endif %} en cours.{% endif %}
         <span class="it-board__count"><b class="is-open">{{ stats.open }}</b> open · <b class="is-investigating">{{ stats.investigating }}</b> investigating · <b class="is-resolved">{{ stats.resolved }}</b> resolved</span>
       </h1>
+      <span class="it-board__team">Astreinte : {{ cc.team }}</span>
       <p class="it-board__lead">Rust (Axum + SQLx) et un PostgreSQL managé. Clever Cloud compile et déploie à chaque <span class="cc-kbd">git push</span>, sans Dockerfile.</p>
       <div class="it-board__cta">
         <a class="cc-btn cc-btn--gradient" href="/incidents/new">Déclarer un incident</a>
@@ -28,7 +29,7 @@
     </div>
 
     <aside class="it-console cc-reveal" style="--i:1" aria-label="Déploiement Clever Cloud">
-      <div class="it-console__bar"><i></i><i></i><i></i><span>{% if cc.app_name == "—" %}incident-tracker{% else %}{{ cc.app_name }}{% endif %}</span>
+      <div class="it-console__bar"><i></i><i></i><i></i><span>{% if cc.app_name == "—" %}incident-tracker{% else %}{{ cc.app_name }}{% endif %}</span><span class="it-env{% if cc.env_name == "production" %} is-production{% endif %}">{{ cc.env_name }}</span>
       </div>
       <ol>
         <li>git push clever main</li>
@@ -37,6 +38,12 @@
         <li><span>GET /health → 200<small>PostgreSQL joignable, trafic basculé</small></span></li>
         <li><span>SELECT count(*) FILTER (…)<small>{{ stats.total }} incidents lus dans PostgreSQL</small></span></li>
       </ol>
+      <ul class="it-config" aria-label="Variables d'environnement lues par l'application">
+        <li><span>APP_ENV</span><b>{{ cc.env_name }}</b></li>
+        <li><span>TEAM_NAME</span><b>{{ cc.team }}</b></li>
+        <li><span>SLA_CRITICAL_MINUTES</span><b>{{ cc.sla_minutes }}</b></li>
+        <li><span>ANNOUNCEMENT</span>{% if cc.announcement.is_empty() %}<b class="is-empty">non définie</b>{% else %}<b>définie</b>{% endif %}</li>
+      </ul>
       <dl class="it-console__vars">
         <div><dt>Instance</dt>{% if cc.instance == "—" %}<dd class="is-empty">injecté au déploiement</dd>{% else %}<dd>{{ cc.instance }}</dd>{% endif %}</div>
         <div><dt>Type d'instance</dt>{% if cc.instance_type == "—" %}<dd class="is-empty">injecté au déploiement</dd>{% else %}<dd>{{ cc.instance_type }}</dd>{% endif %}</div>
@@ -78,7 +85,7 @@
           <span class="it-row__spine" aria-hidden="true"></span>
           <div>
             <div class="it-row__title">{{ incident.title }}</div>
-            <div class="it-row__meta"><span class="it-tag">{{ incident.service }}</span><span>{{ incident.age_str() }}</span></div>
+            <div class="it-row__meta"><span class="it-tag">{{ incident.service }}</span><span>{{ incident.age_str() }}</span>{% if incident.sla_breached(cc.sla_minutes) %}<span class="it-sla">SLA dépassé</span>{% endif %}</div>
           </div>
           <span class="it-sev">{{ incident.severity }}</span>
           <span class="it-status-dot is-{{ incident.status }}">{{ incident.status }}</span>

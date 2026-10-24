@@ -39,6 +39,13 @@ impl Incident {
         }
     }
 
+    /// Critical or high incident still unresolved after the SLA (SLA_CRITICAL_MINUTES).
+    pub fn sla_breached(&self, sla_minutes: &i64) -> bool {
+        matches!(self.severity.as_str(), "critical" | "high")
+            && self.status != "resolved"
+            && (Utc::now() - self.created_at).num_minutes() >= *sla_minutes
+    }
+
     /// Position in the open → investigating → resolved workflow.
     pub fn status_step(&self) -> u8 {
         match self.status.as_str() {
@@ -113,6 +120,11 @@ pub struct Platform {
     pub instance_type: String,
     pub commit: String,
     pub deployment: String,
+    /// Demo settings, set in the Clever Cloud console (environment variables tab).
+    pub env_name: String,
+    pub team: String,
+    pub sla_minutes: i64,
+    pub announcement: String,
 }
 
 impl Platform {
@@ -134,6 +146,13 @@ impl Platform {
             instance_type: or_dash(g("INSTANCE_TYPE")),
             commit: cut(g("CC_COMMIT_ID"), 7),
             deployment: cut(g("CC_DEPLOYMENT_ID"), 16),
+            env_name: g("APP_ENV").unwrap_or_else(|| "local".into()),
+            team: g("TEAM_NAME").unwrap_or_else(|| "Équipe SRE".into()),
+            sla_minutes: g("SLA_CRITICAL_MINUTES")
+                .and_then(|v| v.trim().parse().ok())
+                .filter(|m: &i64| *m > 0)
+                .unwrap_or(30),
+            announcement: g("ANNOUNCEMENT").unwrap_or_default(),
         }
     }
 }

@@ -38,7 +38,19 @@ Cible de déploiement : **Clever Cloud** (runtime Rust natif + add-on PostgreSQL
 | `DB_POOL_MAX` | `2` | Taille du pool ; règle `DB_POOL_MAX × instances ≤ connexions du plan` (`xxs_sml` = 45, DEV = 5) |
 | `RUST_LOG` | `incident_tracker=info,tower_http=info` | Filtre de logs (défaut intégré identique) |
 | `CC_HEALTH_CHECK_PATH` | `/health` | La plateforme valide le déploiement contre PostgreSQL |
-| `CC_RUST_VERSION` | `1.94` | Épingle la toolchain de build (minimum déclaré : 1.85) |
+| `CC_CACHE_DEPENDENCIES` | `true` | Réutilise `target/` et le registre cargo d'un déploiement à l'autre (build bien plus court) |
+
+`CC_RUST_VERSION` n'existe pas (ignorée, le build prend la `stable` du jour) : pour épingler la toolchain, c'est `CC_RUSTUP_CHANNEL` (ex. `1.94.0`), au prix d'une installation rustup si la version n'est pas sur l'image.
+
+### Variables de démo (à montrer dans l'onglet Variables de la console)
+| Variable | Exemple | Effet visible |
+|---|---|---|
+| `APP_ENV` | `production` | Pastille d'environnement dans la console de la page (dégradé Clever si `production`) ; défaut `local` |
+| `TEAM_NAME` | `SRE Paris` | « Astreinte : … » sous le titre ; défaut `Équipe SRE` |
+| `SLA_CRITICAL_MINUTES` | `30` | Incidents critical/high non résolus au-delà de ce délai marqués « SLA dépassé » ; défaut `30` |
+| `ANNOUNCEMENT` | `Maintenance ce soir à 22 h` | Bandeau en haut de toutes les pages ; absent = pas de bandeau |
+
+Scénario de démo : modifier `ANNOUNCEMENT` ou `SLA_CRITICAL_MINUTES` dans la console, `clever restart`, recharger la page.
 
 ---
 

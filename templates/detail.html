@@ -17,6 +17,7 @@
             <span class="it-status-dot is-{{ incident.status }}">{{ incident.status }}</span>
             <span class="it-tag">{{ incident.service }}</span>
             <span>ouvert {{ incident.age_str() }}</span>
+            {% if incident.sla_breached(cc.sla_minutes) %}<span class="it-sla">SLA de {{ cc.sla_minutes }} min dépassé</span>{% endif %}
           </div>
         </div>
         {% if incident.has_description() %}
