@@ -22,8 +22,11 @@
   .is-medium { --sev: var(--sev-medium); } .is-low { --sev: var(--sev-low); }
   .is-open { --st: var(--st-open); } .is-investigating { --st: var(--st-investigating); } .is-resolved { --st: var(--st-resolved); }
   /* Départ du dégradé assombri pour que le texte blanc reste lisible (WCAG AA) */
-  .cc-btn--gradient, .cc-pill--gradient { background-image: linear-gradient(90deg, #d14836 0%, #cb1c42 50%, #a51050 100%); }
+  .cc-btn--gradient, .cc-pill--gradient { background-image: linear-gradient(90deg, #cc4432 0%, #cb1c42 50%, #a51050 100%); }
   html { scroll-behavior: smooth; }
+  /* Lien certification du pied de page : orange uni (le texte dégradé du kit passe sous 4,5:1 sur le fond) */
+  .cc-footer li a.is-cert { color: var(--cc-orange); background: none; -webkit-background-clip: initial; background-clip: initial; -webkit-text-fill-color: currentColor; }
+  .cc-topbar__demo small { font-size: 11px; }
   /* Libellés de sévérité éclaircis pour rester lisibles sur le navy */
   .it-sev, .it-sevpick label b, .it-skyline__legend span { color: color-mix(in srgb, var(--sev, var(--cc-muted)) 72%, #fff); }
   :focus-visible { outline: 2px solid var(--cc-orange); outline-offset: 3px; border-radius: 6px; }
@@ -67,13 +70,13 @@
   .it-console__vars dd.is-empty { color: var(--cc-muted); }
 
   /* Variables de démo (onglet Variables d'environnement de la console Clever) */
-  .it-announce { background: linear-gradient(90deg, #d14836 0%, #cb1c42 50%, #a51050 100%); color: #fff; font-size: 14.5px; font-weight: 600; }
+  .it-announce { background: linear-gradient(90deg, #cc4432 0%, #cb1c42 50%, #a51050 100%); color: #fff; font-size: 14.5px; font-weight: 600; }
   .it-announce .cc-container { display: flex; align-items: center; gap: 12px; padding-block: 10px; }
   .it-announce code { font-family: var(--cc-mono); font-size: 11.5px; font-weight: 500; padding: 2px 8px; border-radius: 6px; background: rgba(14, 17, 36, 0.35); white-space: nowrap; }
   .it-board__team { display: inline-flex; align-items: center; gap: 8px; margin-top: 14px; font-size: 14px; color: var(--cc-text-2); }
   .it-board__team::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--cc-green); box-shadow: 0 0 0 4px rgba(17, 190, 169, 0.2); }
   .it-env { margin-left: auto; font-family: var(--cc-mono); font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px; color: #5fe3d3; border: 1px solid rgba(17, 190, 169, 0.5); background: rgba(17, 190, 169, 0.12); }
-  .it-env.is-production { color: #fff; border-color: transparent; background: linear-gradient(90deg, #d14836 0%, #cb1c42 50%, #a51050 100%); }
+  .it-env.is-production { color: #fff; border-color: transparent; background: linear-gradient(90deg, #cc4432 0%, #cb1c42 50%, #a51050 100%); }
   .it-config { list-style: none; margin: 0; padding: 14px 18px; display: grid; gap: 8px; border-top: 1px dashed var(--cc-border); font-family: var(--cc-mono); font-size: 12.5px; }
   .it-config li { display: flex; justify-content: space-between; gap: 12px; }
   .it-config span { color: var(--cc-orange); }
@@ -86,7 +89,7 @@
   .it-filters { display: flex; flex-wrap: wrap; gap: 6px; }
   .it-filters a { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--cc-border); color: var(--cc-text-2); font-size: 14px; font-weight: 600; }
   .it-filters a:hover { border-color: var(--cc-border-strong); }
-  .it-filters a.is-active { background: linear-gradient(90deg, #d14836 0%, #cb1c42 50%, #a51050 100%); color: #fff; border-color: transparent; }
+  .it-filters a.is-active { background: linear-gradient(90deg, #cc4432 0%, #cb1c42 50%, #a51050 100%); color: #fff; border-color: transparent; }
   .it-filters em { font-style: normal; font-family: var(--cc-mono); font-size: 12px; opacity: 0.7; }
   .it-rows { list-style: none; margin: 0; padding: 0; border: 1px solid var(--cc-border); border-radius: var(--cc-radius); overflow: hidden; background: var(--cc-surface); }
   .it-rows li + li { border-top: 1px solid var(--cc-border); }
