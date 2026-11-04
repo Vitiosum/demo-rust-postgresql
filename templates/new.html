@@ -4,47 +4,62 @@
 {% block nav_incidents %} is-active{% endblock %}
 
 {% block content %}
-<section class="cc-section">
-  <div class="cc-container">
-    <a class="it-back" href="/">← Tous les incidents</a>
-    <h1 class="it-board__title" style="font-size: clamp(32px, 4.4vw, 52px); margin-bottom: 28px">Déclarer un incident</h1>
+<div class="tower">
+  <div class="cc-container tower__wrap">
+    <a class="back" href="/">Retour au radar</a>
+    <h1 class="tower__title tower__title--page">Déclarer un incident</h1>
+    <p class="tower__lead">Remplissez un strip vierge. À l'envoi, SQLx écrit une ligne dans PostgreSQL et l'incident apparaît sur le radar, à la distance de sa sévérité.</p>
 
-    <form class="it-form cc-reveal" style="--i:1" method="post" action="/incidents">
-      {% if !error.is_empty() %}
-      <div class="cc-error" role="alert">{{ error }}</div>
-      {% endif %}
+    <div class="flight">
+      <form class="blank" method="post" action="/incidents">
+        {% if !error.is_empty() %}
+        <div class="blank__error" role="alert">{{ error }}</div>
+        {% endif %}
 
-      <div class="it-form__row">
-        <div class="cc-field">
-          <label class="cc-label" for="title">Titre</label>
-          <input class="cc-input" type="text" id="title" name="title" placeholder="ex. Latence élevée sur le paiement" required maxlength="255" value="{{ title }}" autofocus>
+        <div class="blank__row">
+          <div class="blank__field blank__field--wide">
+            <label for="title">Titre</label>
+            <input type="text" id="title" name="title" placeholder="ex. Latence élevée sur le paiement" required maxlength="255" value="{{ title }}" autofocus>
+          </div>
+          <div class="blank__field">
+            <label for="service">Service touché <small>donne l'indicatif radio</small></label>
+            <input type="text" id="service" name="service" placeholder="ex. api-gateway" required maxlength="100" value="{{ service }}">
+          </div>
         </div>
-        <div class="cc-field">
-          <label class="cc-label" for="service">Service touché</label>
-          <input class="cc-input" type="text" id="service" name="service" placeholder="ex. api-gateway" required maxlength="100" value="{{ service }}">
+
+        <fieldset class="blank__sev">
+          <legend>Sévérité <small>fixe la couleur et la distance à la piste</small></legend>
+          <div class="blank__sevopts">
+            <input type="radio" id="sev-low" name="severity" value="low"{% if severity == "low" %} checked{% endif %}><label class="is-low" for="sev-low"><b>low</b><span>Gêne mineure</span></label>
+            <input type="radio" id="sev-medium" name="severity" value="medium"{% if severity == "medium" %} checked{% endif %}><label class="is-medium" for="sev-medium"><b>medium</b><span>Fonction dégradée</span></label>
+            <input type="radio" id="sev-high" name="severity" value="high"{% if severity == "high" %} checked{% endif %}><label class="is-high" for="sev-high"><b>high</b><span>Service perturbé</span></label>
+            <input type="radio" id="sev-critical" name="severity" value="critical"{% if severity == "critical" %} checked{% endif %}><label class="is-critical" for="sev-critical"><b>critical</b><span>Service à l'arrêt</span></label>
+          </div>
+        </fieldset>
+
+        <div class="blank__field">
+          <label for="description">Description <small>optionnelle</small></label>
+          <textarea id="description" name="description" rows="5" placeholder="Ce qui se passe, depuis quand, quel impact.">{{ description }}</textarea>
         </div>
-      </div>
 
-      <fieldset class="it-sevpick">
-        <legend class="cc-label">Sévérité</legend>
-        <div class="it-sevpick__opts">
-          <input type="radio" id="sev-low" name="severity" value="low"{% if severity == "low" %} checked{% endif %}><label class="is-low" for="sev-low"><b>low</b><span>Gêne mineure</span></label>
-          <input type="radio" id="sev-medium" name="severity" value="medium"{% if severity == "medium" %} checked{% endif %}><label class="is-medium" for="sev-medium"><b>medium</b><span>Fonction dégradée</span></label>
-          <input type="radio" id="sev-high" name="severity" value="high"{% if severity == "high" %} checked{% endif %}><label class="is-high" for="sev-high"><b>high</b><span>Service perturbé</span></label>
-          <input type="radio" id="sev-critical" name="severity" value="critical"{% if severity == "critical" %} checked{% endif %}><label class="is-critical" for="sev-critical"><b>critical</b><span>Service à l'arrêt</span></label>
+        <div class="blank__actions">
+          <button class="cc-btn cc-btn--gradient" type="submit">Déclarer l'incident</button>
+          <a class="cc-btn" href="/">Annuler</a>
         </div>
-      </fieldset>
+      </form>
 
-      <div class="cc-field">
-        <label class="cc-label" for="description">Description <span class="cc-muted">(optionnelle)</span></label>
-        <textarea class="cc-textarea" id="description" name="description" rows="5" placeholder="Ce qui se passe, depuis quand, quel impact.">{{ description }}</textarea>
-      </div>
-
-      <div class="it-actions">
-        <button class="cc-btn cc-btn--gradient" type="submit">Déclarer l'incident</button>
-        <a class="cc-btn cc-btn--ghost" href="/">Annuler</a>
-      </div>
-    </form>
+      <aside class="flight__side">
+        <section class="console" aria-labelledby="console-title">
+          <div class="console__head"><h2 id="console-title">Console du contrôleur</h2><span>validation côté serveur</span></div>
+          <p class="console__intro">Aucune requête pour afficher ce formulaire. À l'envoi, Axum valide les champs (titre ≤ 255, service ≤ 100, description ≤ 10 000 caractères), puis SQLx joue :</p>
+          <div class="console__pending">
+            <div class="console__call"><span>sqlx::</span>query_as::&lt;Incident&gt;().fetch_one</div>
+            <code class="console__sql">{{ insert_sql }}</code>
+            <div class="console__binds">$1 = titre, $2 = description ou NULL, $3 = service, $4 = sévérité</div>
+          </div>
+        </section>
+      </aside>
+    </div>
   </div>
-</section>
+</div>
 {% endblock %}

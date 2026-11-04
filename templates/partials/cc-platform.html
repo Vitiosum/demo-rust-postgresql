@@ -1,19 +1,19 @@
-<div class="cc-platform cc-reveal" style="--i:6">
-  <div class="cc-platform__head">
-    <h3>Vu depuis Clever Cloud</h3>
+<section class="rack" aria-labelledby="rack-title">
+  <div class="rack__head">
+    <h2 id="rack-title">Running on Clever Cloud</h2>
     {% if cc.live %}
-    <span class="cc-pill cc-pill--ok"><span class="cc-dot"></span>Production</span>
+    <span class="rack__lamp is-live">Live</span>
     {% else %}
-    <span class="cc-pill cc-pill--muted"><span class="cc-dot cc-dot--muted"></span>Local · hors Clever Cloud</span>
+    <span class="rack__lamp">Local</span>
     {% endif %}
   </div>
-  <dl class="cc-kv">
+  <dl class="rack__kv">
     <div><dt>Application</dt><dd{% if cc.app_name == "—" %} class="is-empty"{% endif %}>{{ cc.app_name }}</dd></div>
-    <div><dt>Instance</dt><dd{% if cc.instance == "—" %} class="is-empty"{% endif %}>{{ cc.instance }}</dd></div>
-    <div><dt>Commit déployé</dt><dd{% if cc.commit == "—" %} class="is-empty"{% endif %}>{{ cc.commit }}</dd></div>
     <div><dt>App ID</dt><dd{% if cc.app_id == "—" %} class="is-empty"{% endif %}>{{ cc.app_id }}</dd></div>
-    <div><dt>Déploiement</dt><dd{% if cc.deployment == "—" %} class="is-empty"{% endif %}>{{ cc.deployment }}</dd></div>
+    <div><dt>Instance</dt><dd{% if cc.instance == "—" %} class="is-empty"{% endif %}>{{ cc.instance }}</dd></div>
     <div><dt>Type d'instance</dt><dd{% if cc.instance_type == "—" %} class="is-empty"{% endif %}>{{ cc.instance_type }}</dd></div>
+    <div><dt>Commit déployé</dt><dd{% if cc.commit == "—" %} class="is-empty"{% endif %}>{{ cc.commit }}</dd></div>
+    <div><dt>Déploiement</dt><dd{% if cc.deployment == "—" %} class="is-empty"{% endif %}>{{ cc.deployment }}</dd></div>
   </dl>
-  <div class="cc-platform__foot">Variables injectées automatiquement par la plateforme : <a href="https://www.clever.cloud/developers/doc/reference/reference-environment-variables/" target="_blank" rel="noopener">référence</a>.</div>
-</div>
+  <p class="rack__foot">{% if cc.live %}Binaire compilé par le runtime Rust de Clever Cloud (<code>cargo build --release --locked</code>), sans Dockerfile.{% else %}Hors plateforme : ces valeurs sont injectées par Clever Cloud au déploiement.{% endif %}</p>
+</section>

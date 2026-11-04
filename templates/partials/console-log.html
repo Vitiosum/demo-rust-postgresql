@@ -1,0 +1,11 @@
+<ol class="console__log">
+  {% for q in queries %}
+  <li>
+    <div class="console__call"><span>sqlx::</span>{{ q.call }}</div>
+    <code class="console__sql">{{ q.sql }}</code>
+    {% if !q.binds.is_empty() %}<div class="console__binds">{{ q.binds }}</div>{% endif %}
+    <div class="console__res">{{ q.rows }} ligne{% if q.rows != 1 %}s{% endif %} en {{ q.ms() }} ms</div>
+  </li>
+  {% endfor %}
+</ol>
+<p class="console__pool">Pool SQLx : {{ db.pool_open }} connexion{% if db.pool_open > 1 %}s{% endif %} ouverte{% if db.pool_open > 1 %}s{% endif %} ({{ db.pool_idle }} libre{% if db.pool_idle > 1 %}s{% endif %}) sur <code>DB_POOL_MAX</code> = {{ db.pool_max }}</p>

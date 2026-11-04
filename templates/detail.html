@@ -4,57 +4,76 @@
 {% block nav_incidents %} is-active{% endblock %}
 
 {% block content %}
-<section class="cc-section">
-  <div class="cc-container">
-    <a class="it-back" href="/">← Tous les incidents</a>
+<div class="tower">
+  <div class="cc-container tower__wrap">
+    <a class="back" href="/">Retour au radar</a>
 
-    <div class="it-detail">
-      <article class="cc-reveal is-{{ incident.severity }}" style="--i:0">
-        <div class="it-detail__head">
-          <span class="it-sev">{{ incident.severity }}</span>
-          <h1>{{ incident.title }}</h1>
-          <div class="it-detail__sub">
-            <span class="it-status-dot is-{{ incident.status }}">{{ incident.status }}</span>
-            <span class="it-tag">{{ incident.service }}</span>
-            <span>ouvert {{ incident.age_str() }}</span>
-            {% if incident.sla_breached(cc.sla_minutes) %}<span class="it-sla">SLA de {{ cc.sla_minutes }} min dépassé</span>{% endif %}
-          </div>
-        </div>
+    <article class="fstrip is-{{ incident.severity }} is-{{ incident.status }}{% if incident.sla_breached(cc.sla_minutes) %} is-sla{% endif %}">
+      <span class="strip__band" aria-hidden="true"></span>
+      <div class="fstrip__call"><b>{{ incident.callsign() }}</b><small>{{ incident.service }}</small></div>
+      <div class="fstrip__main">
+        <p class="fstrip__state"><b class="strip__sev">{{ incident.severity }}</b> {{ incident.status }}, {{ incident.status_gloss() }}{% if incident.sla_breached(cc.sla_minutes) %} <span class="strip__sla">SLA de {{ cc.sla_minutes }} min dépassé</span>{% endif %}</p>
+        <h1>{{ incident.title }}</h1>
         {% if incident.has_description() %}
-        <p class="it-desc">{{ incident.description_text() }}</p>
+        <p class="fstrip__desc">{{ incident.description_text() }}</p>
         {% else %}
-        <p class="it-desc cc-muted">Pas de description.</p>
+        <p class="fstrip__desc is-empty">Pas de description.</p>
         {% endif %}
-      </article>
+      </div>
+      <dl class="fstrip__cells">
+        <div><dt>Ouvert</dt><dd>{{ incident.age_str() }}</dd></div>
+        <div><dt>Squawk</dt><dd class="fstrip__sq">{{ incident.squawk(cc.sla_minutes) }}</dd></div>
+      </dl>
+    </article>
 
-      <aside class="cc-reveal" style="--i:1">
-        <div class="cc-card cc-card--pad">
-          <h2 class="cc-card__title">Avancement</h2>
-          <form method="post" action="/incidents/{{ incident.id }}/status">
-            <ol class="it-steps cc-mt-2">
-              <li class="{% if incident.status_step() == 0 %}is-current{% else %}is-done{% endif %}">
-                <span class="it-step__dot" aria-hidden="true"></span>
-                <button type="submit" name="status" value="open"{% if incident.status_step() == 0 %} aria-current="step"{% endif %}><span class="it-step__name">open</span><span class="it-step__hint">Signalé, à prendre en charge</span></button>
-              </li>
-              <li class="{% if incident.status_step() == 1 %}is-current{% else if incident.status_step() > 1 %}is-done{% endif %}">
-                <span class="it-step__dot" aria-hidden="true"></span>
-                <button type="submit" name="status" value="investigating"{% if incident.status_step() == 1 %} aria-current="step"{% endif %}><span class="it-step__name">investigating</span><span class="it-step__hint">Analyse en cours</span></button>
-              </li>
-              <li class="{% if incident.status_step() == 2 %}is-current{% endif %}">
-                <span class="it-step__dot" aria-hidden="true"></span>
-                <button type="submit" name="status" value="resolved"{% if incident.status_step() == 2 %} aria-current="step"{% endif %}><span class="it-step__name">resolved</span><span class="it-step__hint">Corrigé et vérifié</span></button>
-              </li>
-            </ol>
-          </form>
-          <dl class="it-facts">
-            <div><dt>Créé le</dt><dd>{{ incident.created_str() }}</dd></div>
-            <div><dt>Mis à jour le</dt><dd>{{ incident.updated_str() }}</dd></div>
-            <div><dt>Identifiant</dt><dd>{{ incident.short_id() }}</dd></div>
-          </dl>
-        </div>
+    <div class="flight">
+      <section class="approach" aria-labelledby="approach-title">
+        <h2 id="approach-title">Profil d'approche</h2>
+        <p class="approach__intro">Chaque palier est un statut. Un clic envoie l'<code>UPDATE</code> de la console à PostgreSQL, puis la page se recharge : « resolved » pose l'avion sur la piste.</p>
+        <form method="post" action="/incidents/{{ incident.id }}/status">
+          <div class="approach__scene is-step-{{ incident.status_step() }}" aria-hidden="true">
+            <svg class="approach__svg" viewBox="0 0 600 200" preserveAspectRatio="none">
+              <line class="approach__ground" x1="0" y1="178" x2="600" y2="178"/>
+              <line class="approach__glide" x1="40" y1="30" x2="560" y2="170"/>
+              <rect class="approach__runway" x="470" y="172" width="126" height="6"/>
+              <line class="approach__lights" x1="474" y1="171" x2="594" y2="171"/>
+            </svg>
+            <svg class="approach__plane" viewBox="0 0 64 24"><path d="M3 12.5 L9 3 L13 3 L17 10 L46 10 C54 10 60 11.5 62 13 C60 14.5 54 16 46 16 L8 16 C5 16 3 14.5 3 12.5 Z M24 13 L34 22 L39 22 L34 13 Z M7 13 L4 18 L8 18 L12 13 Z"/></svg>
+          </div>
+          <ol class="approach__steps">
+            <li class="{% if incident.status_step() == 0 %}is-current{% else %}is-done{% endif %}">
+              <button type="submit" name="status" value="open"{% if incident.status_step() == 0 %} aria-current="step"{% endif %}><b>open</b><span>En approche, à prendre en charge</span></button>
+            </li>
+            <li class="{% if incident.status_step() == 1 %}is-current{% else if incident.status_step() > 1 %}is-done{% endif %}">
+              <button type="submit" name="status" value="investigating"{% if incident.status_step() == 1 %} aria-current="step"{% endif %}><b>investigating</b><span>En finale, analyse en cours</span></button>
+            </li>
+            <li class="{% if incident.status_step() == 2 %}is-current{% endif %}">
+              <button type="submit" name="status" value="resolved"{% if incident.status_step() == 2 %} aria-current="step"{% endif %}><b>resolved</b><span>Posé : corrigé et vérifié</span></button>
+            </li>
+          </ol>
+        </form>
+        <dl class="flight__facts">
+          <div><dt>Créé le</dt><dd>{{ incident.created_str() }}</dd></div>
+          <div><dt>Mis à jour le</dt><dd>{{ incident.updated_str() }}</dd></div>
+          <div><dt>Identifiant</dt><dd>{{ incident.short_id() }}</dd></div>
+        </dl>
+      </section>
+
+      <aside class="flight__side">
+        <section class="console" aria-labelledby="console-title">
+          <div class="console__head"><h2 id="console-title">Console du contrôleur</h2><span>PostgreSQL {{ db.version }}</span></div>
+          <p class="console__intro">Jouée pour afficher ce strip :</p>
+{% include "partials/console-log.html" %}
+          <p class="console__intro">Jouée au clic sur un palier :</p>
+          <div class="console__pending">
+            <div class="console__call"><span>sqlx::</span>query_as::&lt;Incident&gt;().fetch_optional</div>
+            <code class="console__sql">{{ update_sql }}</code>
+            <div class="console__binds">$1 = 'open' | 'investigating' | 'resolved', $2 = '{{ incident.id }}'</div>
+          </div>
+        </section>
 {% include "partials/cert-mini.html" %}
       </aside>
     </div>
   </div>
-</section>
+</div>
 {% endblock %}

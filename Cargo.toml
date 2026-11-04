@@ -22,5 +22,9 @@ tracing-subscriber = { version = "0.3", default-features = false, features = ["s
 dotenvy       = "0.15"
 tower-http    = { version = "0.6", features = ["trace", "set-header"] }
 
+[dev-dependencies]
+# Already in the graph through axum: drives the router in tests (ServiceExt::oneshot).
+tower         = { version = "0.5", features = ["util"] }
+
 [profile.release]
 opt-level = 1

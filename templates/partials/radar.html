@@ -1,0 +1,63 @@
+<figure class="scope" aria-labelledby="scope-cap">
+  <div class="scope__glass">
+    <svg class="scope__svg" viewBox="0 0 660 660" role="group" aria-label="Radar : {{ radar.blips.len() }} incidents en vol, {{ radar.parked_total }} posés sur la piste">
+      <circle class="scope__disc" cx="330" cy="330" r="292"/>
+      <g class="scope__grid" aria-hidden="true">
+        <line x1="38" y1="330" x2="622" y2="330"/><line x1="330" y1="38" x2="330" y2="622"/>
+        <circle class="is-critical" cx="330" cy="330" r="80"/>
+        <circle class="is-high" cx="330" cy="330" r="142"/>
+        <circle class="is-medium" cx="330" cy="330" r="204"/>
+        <circle class="is-low" cx="330" cy="330" r="262"/>
+      </g>
+      <g class="scope__map" aria-hidden="true">
+        <path class="scope__coast" d="M 96 168 C 140 214, 118 262, 172 300 S 232 352, 172 392 S 116 470, 150 562"/>
+        <g class="scope__centerline"><line x1="311" y1="363" x2="205" y2="547"/><line x1="295" y1="402" x2="285" y2="396"/><line x1="275" y1="437" x2="265" y2="431"/><line x1="255" y1="472" x2="245" y2="466"/><line x1="235" y1="506" x2="225" y2="500"/><line x1="215" y1="541" x2="205" y2="535"/></g>
+      </g>
+      <g class="scope__ticks" aria-hidden="true">{% for d in 0..72 %}<line x1="330" y1="38" x2="330" y2="{% if d % 6 == 0 %}52{% else %}45{% endif %}" transform="rotate({{ d * 5 }} 330 330)"/>{% endfor %}</g>
+      <g class="scope__bearings" aria-hidden="true">
+        <text x="330" y="23">000</text><text x="486" y="65">030</text><text x="599" y="178">060</text><text x="641" y="334">090</text>
+        <text x="599" y="489">120</text><text x="486" y="603">150</text><text x="330" y="645">180</text><text x="174" y="603">210</text>
+        <text x="61" y="490">240</text><text x="19" y="334">270</text><text x="61" y="178">300</text><text x="174" y="65">330</text>
+      </g>
+      <g class="scope__rings" aria-hidden="true">
+        <text class="is-critical" x="324" y="246">critical</text>
+        <text class="is-high" x="324" y="184">high</text>
+        <text class="is-medium" x="324" y="122">medium</text>
+        <text class="is-low" x="324" y="64">low</text>
+      </g>
+      <g class="scope__runway" aria-hidden="true">
+        <g transform="rotate(30 330 330)">
+          <rect x="325" y="292" width="10" height="76" rx="1"/>
+          <line x1="330" y1="302" x2="330" y2="358"/>
+        </g>
+        <text x="292" y="384">03</text><text x="360" y="290">21</text>
+        {% for p in radar.parked %}<rect class="scope__parked" x="{{ p.x }}" y="{{ p.y }}" width="7" height="7"/>{% endfor %}
+        {% if radar.parked_total > 0 %}<text class="scope__apron" x="346" y="382">{{ radar.parked_total }} posé{% if radar.parked_total > 1 %}s{% endif %}</text>{% endif %}
+      </g>
+      {% for b in radar.blips %}
+      <a class="blip is-{{ b.severity }} is-{{ b.status }}{% if b.sla %} is-sla{% endif %}" href="/incidents/{{ b.id }}" style="--a:{{ b.bearing }}" aria-label="{{ b.callsign }} : {{ b.title }}, {{ b.severity }}, {{ b.status }}{% if b.sla %}, SLA dépassé{% endif %}">
+        <g class="blip__trail">{% for d in b.trail %}<circle cx="{{ d.x }}" cy="{{ d.y }}" r="2.2"/>{% endfor %}</g>
+        {% if b.status == "investigating" %}<line class="blip__vector" x1="{{ b.x }}" y1="{{ b.y }}" x2="{{ b.vx }}" y2="{{ b.vy }}"/>{% endif %}
+        <line class="blip__leader" x1="{{ b.x }}" y1="{{ b.y }}" x2="{{ b.kx }}" y2="{{ b.ky }}"/>
+        {% if b.sla %}<circle class="blip__alarm" cx="{{ b.x }}" cy="{{ b.y }}" r="14"/>{% endif %}
+        <rect class="blip__plot" x="{{ b.x - 6 }}" y="{{ b.y - 6 }}" width="12" height="12" transform="rotate(45 {{ b.x }} {{ b.y }})"/>
+        <rect class="blip__hit" x="{{ b.x - 16 }}" y="{{ b.y - 16 }}" width="32" height="32"/>
+        <text class="blip__block" x="{{ b.lx }}" y="{{ b.ly }}" text-anchor="{{ b.anchor }}"><tspan class="blip__call">{{ b.callsign }}</tspan><tspan class="blip__info" x="{{ b.lx }}" dy="1.1em">{{ b.info }}</tspan>{% if b.sla %}<tspan class="blip__squawk" x="{{ b.lx }}" dy="1.1em">7700</tspan>{% endif %}</text>
+      </a>
+      {% endfor %}
+    </svg>
+    <div class="scope__sweep" aria-hidden="true"></div>
+    <div class="scope__readouts">
+      <span class="scope__ro scope__ro--tl">CLVR APP<b>{{ now }}</b></span>
+      <span class="scope__ro scope__ro--tr">APP_ENV<b class="scope__env{% if cc.env_name == "production" %} is-production{% endif %}">{{ cc.env_name }}</b></span>
+      <span class="scope__ro scope__ro--bl">SLA<b>{{ cc.sla_minutes }} min</b></span>
+      <span class="scope__ro scope__ro--br">incidents<b>{{ stats.total }} lignes</b></span>
+    </div>
+  </div>
+  <figcaption id="scope-cap" class="scope__legend">
+    <span class="lg lg--open">open : en approche</span>
+    <span class="lg lg--inv">investigating : guidé vers la piste</span>
+    <span class="lg lg--res">resolved : posé</span>
+    <span class="lg lg--sla">7700 clignotant : SLA dépassé</span>
+  </figcaption>
+</figure>

@@ -1,101 +1,83 @@
 {% extends "base.html" %}
 
-{% block title %}Incidents{% endblock %}
+{% block title %}Radar{% endblock %}
 {% block nav_incidents %} is-active{% endblock %}
 
 {% block content %}
-<div class="cc-container">
-  <section class="it-board">
-    <div class="cc-reveal" style="--i:0">
-      <h1 class="it-board__title">
-        {% if stats.active() == 0 %}Tout est calme.{% else %}{{ stats.active() }} incident{% if stats.active() > 1 %}s{% endif %} en cours.{% endif %}
-        <span class="it-board__count"><b class="is-open">{{ stats.open }}</b> open · <b class="is-investigating">{{ stats.investigating }}</b> investigating · <b class="is-resolved">{{ stats.resolved }}</b> resolved</span>
-      </h1>
-      <span class="it-board__team">Astreinte : {{ cc.team }}</span>
-      <p class="it-board__lead">Rust (Axum + SQLx) et un PostgreSQL managé. Clever Cloud compile et déploie à chaque <span class="cc-kbd">git push</span>, sans Dockerfile.</p>
-      <div class="it-board__cta">
-        <a class="cc-btn cc-btn--gradient" href="/incidents/new">Déclarer un incident</a>
-        <a class="cc-btn" href="#cert-title">Se certifier Clever Cloud ↓</a>
-      </div>
+<div class="tower">
+  <div class="cc-container tower__wrap">
+    <div class="tower__room">
+      <header class="tower__head">
+        <div class="tower__intro">
+          <p class="tower__team">Astreinte : {{ cc.team }}</p>
+          <h1 class="tower__title">{% if stats.active() == 0 %}Ciel dégagé.{% else %}{{ stats.active() }} incident{% if stats.active() > 1 %}s{% endif %} en vol.{% endif %}</h1>
+          <p class="tower__lead">Chaque incident est un vol : sa sévérité fixe sa couleur et sa distance à la piste, un SLA dépassé le fait clignoter en 7700, « resolved » le pose. Un binaire Rust, compilé par Clever Cloud sans Dockerfile, relit PostgreSQL à chaque chargement.</p>
+        </div>
+        <div class="tower__cta">
+          <a class="cc-btn cc-btn--gradient" href="/incidents/new">Déclarer un incident</a>
+          <a class="cc-btn" href="#cert-title">Se certifier Clever Cloud</a>
+        </div>
+      </header>
+{% include "partials/radar.html" %}
 
-      {% if !incidents.is_empty() %}
-      <div class="it-skyline" role="group" aria-label="Incidents affichés, hauteur selon la sévérité">
-        {% for incident in incidents %}
-        <a class="is-{{ incident.severity }} is-{{ incident.status }}" style="--n:{{ loop.index0 }}" href="/incidents/{{ incident.id }}" title="{{ incident.title }} ({{ incident.severity }}, {{ incident.status }})" aria-label="{{ incident.title }}, {{ incident.severity }}, {{ incident.status }}"></a>
-        {% endfor %}
-      </div>
-      <div class="it-skyline__legend"><span class="is-critical">critical</span><span class="is-high">high</span><span class="is-medium">medium</span><span class="is-low">low</span><span class="is-resolved">resolved</span></div>
-      {% endif %}
+      <section class="bay" aria-labelledby="bay-title">
+        <div class="bay__head">
+          <h2 id="bay-title">Strips de vol</h2>
+          <nav class="bay__filters" aria-label="Filtrer par statut">
+            <a{% if filter == "" %} class="is-active" aria-current="page"{% endif %} href="/">Tous <em>{{ stats.total }}</em></a>
+            <a{% if filter == "open" %} class="is-active" aria-current="page"{% endif %} href="/?status=open">open <em>{{ stats.open }}</em></a>
+            <a{% if filter == "investigating" %} class="is-active" aria-current="page"{% endif %} href="/?status=investigating">investigating <em>{{ stats.investigating }}</em></a>
+            <a{% if filter == "resolved" %} class="is-active" aria-current="page"{% endif %} href="/?status=resolved">resolved <em>{{ stats.resolved }}</em></a>
+          </nav>
+        </div>
+
+        {% if incidents.is_empty() %}
+        <div class="bay__empty">
+          {% if filter == "" %}
+          <strong>Aucun incident enregistré</strong>
+          <p>Déclarez le premier : il sera écrit dans la table PostgreSQL de l'add-on et apparaîtra sur le radar.</p>
+          <a class="cc-btn cc-btn--gradient" href="/incidents/new">Déclarer un incident</a>
+          {% else %}
+          <strong>Aucun incident {{ filter }}</strong>
+          <p><a href="/">Afficher tous les incidents</a></p>
+          {% endif %}
+        </div>
+        {% else %}
+        <ul class="strips">
+          {% for incident in incidents %}
+          <li>
+            <a class="strip is-{{ incident.severity }} is-{{ incident.status }}{% if incident.sla_breached(cc.sla_minutes) %} is-sla{% endif %}" href="/incidents/{{ incident.id }}">
+              <span class="strip__band" aria-hidden="true"></span>
+              <span class="strip__call"><b>{{ incident.callsign() }}</b><small>{{ incident.service }}</small></span>
+              <span class="strip__main">
+                <span class="strip__title">{{ incident.title }}</span>
+                <span class="strip__state"><b class="strip__sev">{{ incident.severity }}</b> <span>{{ incident.status }}</span>{% if incident.sla_breached(cc.sla_minutes) %} <span class="strip__sla">SLA dépassé</span>{% endif %}</span>
+              </span>
+              <span class="strip__time"><b>{{ incident.age_compact() }}</b><small>{{ incident.created_hm() }}</small></span>
+              <span class="strip__sq"><small>squawk</small><b>{{ incident.squawk(cc.sla_minutes) }}</b></span>
+            </a>
+          </li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+      </section>
     </div>
 
-    <aside class="it-console cc-reveal" style="--i:1" aria-label="Déploiement Clever Cloud">
-      <div class="it-console__bar"><i></i><i></i><i></i><span>{% if cc.app_name == "—" %}incident-tracker{% else %}{{ cc.app_name }}{% endif %}</span><span class="it-env{% if cc.env_name == "production" %} is-production{% endif %}">{{ cc.env_name }}</span>
+    <div class="tower__desk">
+      <section class="console" aria-labelledby="console-title">
+        <div class="console__head"><h2 id="console-title">Console du contrôleur</h2><span>PostgreSQL {{ db.version }}</span></div>
+        <p class="console__intro">Les requêtes SQLx jouées contre PostgreSQL pour dessiner ce radar, telles qu'envoyées :</p>
+{% include "partials/console-log.html" %}
+      </section>
+      <div class="tower__side">
+{% include "partials/atis.html" %}
+{% include "partials/cc-platform.html" %}
       </div>
-      <ol>
-        <li>git push clever main</li>
-        <li><span>cargo build --release<small>Runtime Rust détecté, compilé sur un build dédié</small></span></li>
-        <li><span>sqlx migrate<small>Migrations appliquées au démarrage</small></span></li>
-        <li><span>GET /health → 200<small>PostgreSQL joignable, trafic basculé</small></span></li>
-        <li><span>SELECT count(*) FILTER (…)<small>{{ stats.total }} incidents lus dans PostgreSQL</small></span></li>
-      </ol>
-      <ul class="it-config" aria-label="Variables d'environnement lues par l'application">
-        <li><span>APP_ENV</span><b>{{ cc.env_name }}</b></li>
-        <li><span>TEAM_NAME</span><b>{{ cc.team }}</b></li>
-        <li><span>SLA_CRITICAL_MINUTES</span><b>{{ cc.sla_minutes }}</b></li>
-        <li><span>ANNOUNCEMENT</span>{% if cc.announcement.is_empty() %}<b class="is-empty">non définie</b>{% else %}<b>définie</b>{% endif %}</li>
-      </ul>
-      <dl class="it-console__vars">
-        <div><dt>Instance</dt>{% if cc.instance == "—" %}<dd class="is-empty">injecté au déploiement</dd>{% else %}<dd>{{ cc.instance }}</dd>{% endif %}</div>
-        <div><dt>Type d'instance</dt>{% if cc.instance_type == "—" %}<dd class="is-empty">injecté au déploiement</dd>{% else %}<dd>{{ cc.instance_type }}</dd>{% endif %}</div>
-        <div><dt>Commit déployé</dt>{% if cc.commit == "—" %}<dd class="is-empty">injecté au déploiement</dd>{% else %}<dd>{{ cc.commit }}</dd>{% endif %}</div>
-        <div><dt>Déploiement</dt>{% if cc.deployment == "—" %}<dd class="is-empty">injecté au déploiement</dd>{% else %}<dd>{{ cc.deployment }}</dd>{% endif %}</div>
-      </dl>
-    </aside>
-  </section>
-
-{% include "partials/cert.html" %}
-
-  <section class="cc-reveal" style="--i:2" aria-labelledby="list-title">
-    <div class="it-list-head">
-      <h2 id="list-title" class="cc-section__title">Incidents</h2>
-      <nav class="it-filters" aria-label="Filtrer par statut">
-        <a{% if filter == "" %} class="is-active" aria-current="page"{% endif %} href="/">Tous <em>{{ stats.total }}</em></a>
-        <a{% if filter == "open" %} class="is-active" aria-current="page"{% endif %} href="/?status=open">open <em>{{ stats.open }}</em></a>
-        <a{% if filter == "investigating" %} class="is-active" aria-current="page"{% endif %} href="/?status=investigating">investigating <em>{{ stats.investigating }}</em></a>
-        <a{% if filter == "resolved" %} class="is-active" aria-current="page"{% endif %} href="/?status=resolved">resolved <em>{{ stats.resolved }}</em></a>
-      </nav>
     </div>
-
-    {% if incidents.is_empty() %}
-    <div class="it-empty">
-      {% if filter == "" %}
-      <strong>Aucun incident enregistré</strong>
-      Déclarez le premier : il sera écrit dans la table PostgreSQL de l'add-on.
-      <div><a class="cc-btn cc-btn--gradient" href="/incidents/new">Déclarer un incident</a></div>
-      {% else %}
-      <strong>Aucun incident {{ filter }}</strong>
-      <a href="/">Afficher tous les incidents</a>
-      {% endif %}
-    </div>
-    {% else %}
-    <ul class="it-rows">
-      {% for incident in incidents %}
-      <li>
-        <a class="it-row is-{{ incident.severity }}" href="/incidents/{{ incident.id }}">
-          <span class="it-row__spine" aria-hidden="true"></span>
-          <div>
-            <div class="it-row__title">{{ incident.title }}</div>
-            <div class="it-row__meta"><span class="it-tag">{{ incident.service }}</span><span>{{ incident.age_str() }}</span>{% if incident.sla_breached(cc.sla_minutes) %}<span class="it-sla">SLA dépassé</span>{% endif %}</div>
-          </div>
-          <span class="it-sev">{{ incident.severity }}</span>
-          <span class="it-status-dot is-{{ incident.status }}">{{ incident.status }}</span>
-        </a>
-      </li>
-      {% endfor %}
-    </ul>
-    {% endif %}
-  </section>
-
+  </div>
 </div>
-<div style="height: 64px"></div>
+
+<div class="cc-container licence-wrap">
+{% include "partials/cert.html" %}
+</div>
 {% endblock %}

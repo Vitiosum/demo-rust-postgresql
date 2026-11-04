@@ -1,0 +1,10 @@
+<section class="atis" aria-labelledby="atis-title">
+  <h2 id="atis-title">ATIS</h2>
+  <p class="atis__intro">Les consignes de la tour sont des variables d'environnement : changez-les dans la console Clever Cloud, puis <span class="cc-kbd">clever restart</span>.</p>
+  <dl class="atis__vars">
+    <div><dt>APP_ENV</dt><dd>{{ cc.env_name }}</dd></div>
+    <div><dt>TEAM_NAME</dt><dd>{{ cc.team }}</dd></div>
+    <div><dt>SLA_CRITICAL_MINUTES</dt><dd>{{ cc.sla_minutes }}</dd></div>
+    <div><dt>ANNOUNCEMENT</dt>{% if cc.announcement.is_empty() %}<dd class="is-empty">non définie</dd>{% else %}<dd>NOTAM affiché</dd>{% endif %}</div>
+  </dl>
+</section>

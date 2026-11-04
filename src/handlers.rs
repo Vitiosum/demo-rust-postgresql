@@ -6,10 +6,14 @@ use axum::{
     Form,
 };
 use sqlx::PgPool;
+use std::time::Instant;
 use uuid::Uuid;
 
 use crate::db;
-use crate::models::{CreateIncidentForm, FilterQuery, Incident, Platform, Stats, UpdateStatusForm};
+use crate::models::{
+    CreateIncidentForm, DbInfo, FilterQuery, Incident, Platform, QueryLog, Radar, Stats,
+    UpdateStatusForm,
+};
 
 // ---------------------------------------------------------------------------
 // Template → Response bridge
@@ -68,6 +72,10 @@ struct IndexTemplate {
     incidents: Vec<Incident>,
     filter: String, // "" = all, "open", "investigating", "resolved"
     stats: Stats,
+    radar: Radar,
+    queries: Vec<QueryLog>,
+    db: DbInfo,
+    now: String,
     cc: Platform,
 }
 
@@ -79,6 +87,7 @@ struct NewTemplate {
     service: String,
     severity: String,
     description: String,
+    insert_sql: String,
     cc: Platform,
 }
 
@@ -86,6 +95,9 @@ struct NewTemplate {
 #[template(path = "detail.html")]
 struct DetailTemplate {
     incident: Incident,
+    queries: Vec<QueryLog>,
+    db: DbInfo,
+    update_sql: String,
     cc: Platform,
 }
 
@@ -93,7 +105,14 @@ struct DetailTemplate {
 #[template(path = "stats.html")]
 struct StatsTemplate {
     stats: Stats,
+    queries: Vec<QueryLog>,
+    db: DbInfo,
     cc: Platform,
+}
+
+/// SQL shown before it runs (form submit, status buttons), whitespace collapsed.
+fn compact(sql: &str) -> String {
+    sql.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
 // ---------------------------------------------------------------------------
@@ -110,13 +129,38 @@ pub async fn list_incidents(
     } else {
         Some(filter.as_str())
     };
+    let cc = Platform::from_env();
+
+    // Each SQLx call is timed and logged for the controller console.
+    let t = Instant::now();
     let incidents = db::list_incidents(&pool, db_filter).await?;
+    let binds = db_filter.map_or(String::new(), |s| format!("$1 = '{s}'"));
+    let mut queries = vec![QueryLog::new(
+        "query_as::<Incident>().fetch_all",
+        db::list_sql(db_filter),
+        binds,
+        incidents.len(),
+        t.elapsed(),
+    )];
+    let t = Instant::now();
     let stats = db::get_stats(&pool).await?;
+    queries.push(QueryLog::new(
+        "query().fetch_one",
+        db::STATS_SQL,
+        String::new(),
+        1,
+        t.elapsed(),
+    ));
+
     Ok(HtmlTemplate(IndexTemplate {
+        radar: Radar::build(&incidents, cc.sla_minutes),
         incidents,
         filter,
         stats,
-        cc: Platform::from_env(),
+        queries,
+        db: db::info(&pool),
+        now: chrono::Utc::now().format("%H%MZ").to_string(),
+        cc,
     }))
 }
 
@@ -127,6 +171,7 @@ pub async fn new_incident_form() -> impl IntoResponse {
         service: String::new(),
         severity: "medium".into(),
         description: String::new(),
+        insert_sql: compact(db::INSERT_SQL),
         cc: Platform::from_env(),
     })
 }
@@ -151,6 +196,7 @@ fn form_error(form: &CreateIncidentForm, message: &str) -> Response {
             "medium".into()
         },
         description: form.description.clone(),
+        insert_sql: compact(db::INSERT_SQL),
         cc: Platform::from_env(),
     })
     .into_response()
@@ -208,11 +254,22 @@ pub async fn incident_detail(
     State(pool): State<PgPool>,
     Path(id): Path<Uuid>,
 ) -> Result<impl IntoResponse, AppError> {
+    let t = Instant::now();
     let incident = db::get_incident(&pool, id)
         .await?
         .ok_or(AppError::NotFound)?;
+    let queries = vec![QueryLog::new(
+        "query_as::<Incident>().fetch_optional",
+        db::GET_SQL,
+        format!("$1 = '{id}'"),
+        1,
+        t.elapsed(),
+    )];
     Ok(HtmlTemplate(DetailTemplate {
         incident,
+        queries,
+        db: db::info(&pool),
+        update_sql: compact(db::UPDATE_STATUS_SQL),
         cc: Platform::from_env(),
     }))
 }
@@ -244,9 +301,153 @@ pub async fn health(State(pool): State<PgPool>) -> impl IntoResponse {
 }
 
 pub async fn stats(State(pool): State<PgPool>) -> Result<impl IntoResponse, AppError> {
+    let t = Instant::now();
     let stats = db::get_stats(&pool).await?;
+    let queries = vec![QueryLog::new(
+        "query().fetch_one",
+        db::STATS_SQL,
+        String::new(),
+        1,
+        t.elapsed(),
+    )];
     Ok(HtmlTemplate(StatsTemplate {
         stats,
+        queries,
+        db: db::info(&pool),
         cc: Platform::from_env(),
     }))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models::tests::incident;
+
+    fn platform(announcement: &str) -> Platform {
+        Platform {
+            live: false,
+            app_name: "—".into(),
+            app_id: "—".into(),
+            instance: "—".into(),
+            instance_type: "—".into(),
+            commit: "—".into(),
+            deployment: "—".into(),
+            env_name: "production".into(),
+            team: "SRE Paris".into(),
+            sla_minutes: 30,
+            announcement: announcement.into(),
+        }
+    }
+
+    fn db_info() -> DbInfo {
+        DbInfo {
+            version: "17.6".into(),
+            pool_open: 1,
+            pool_idle: 1,
+            pool_max: 2,
+        }
+    }
+
+    #[test]
+    fn radar_page_shows_plots_strips_queries_and_demo_variables() {
+        let incidents = vec![
+            incident(1, "checkout", "critical", "investigating", 40),
+            incident(2, "website", "low", "resolved", 600),
+        ];
+        let html = IndexTemplate {
+            radar: Radar::build(&incidents, 30),
+            incidents,
+            filter: String::new(),
+            stats: Stats {
+                total: 2,
+                open: 0,
+                investigating: 1,
+                resolved: 1,
+                critical: 1,
+                high: 0,
+                medium: 0,
+                low: 1,
+            },
+            queries: vec![QueryLog::new(
+                "query_as::<Incident>().fetch_all",
+                db::LIST_ALL_SQL,
+                String::new(),
+                2,
+                std::time::Duration::from_micros(900),
+            )],
+            db: db_info(),
+            now: "1400Z".into(),
+            cc: platform("Maintenance ce soir à 22 h"),
+        }
+        .render()
+        .unwrap();
+
+        assert!(html.contains("1 incident en vol."));
+        assert!(html.contains(r#"class="blip is-critical is-investigating is-sla""#));
+        assert!(html.contains(">7700<"), "SLA breach squawks 7700");
+        assert!(html.contains("SLA dépassé"));
+        assert!(
+            html.contains("1 posé<"),
+            "resolved incident parked by the runway"
+        );
+        assert!(html.contains("FROM incidents ORDER BY status = &#x27;resolved&#x27;"));
+        assert!(html.contains("Astreinte\u{a0}: SRE Paris"));
+        assert!(
+            html.contains("Maintenance ce soir à 22 h"),
+            "ANNOUNCEMENT shown as NOTAM"
+        );
+        assert!(html.contains("scope__env is-production"));
+        assert!(html.contains("Running on Clever Cloud"));
+        assert!(html.contains("Cette app tourne sur Clever Cloud. Vous aussi, certifiez-vous."));
+        assert!(html.contains("https://academy.clever.cloud/"));
+    }
+
+    #[test]
+    fn calm_sky_when_nothing_is_open() {
+        let html = IndexTemplate {
+            radar: Radar::build(&[], 30),
+            incidents: vec![],
+            filter: String::new(),
+            stats: Stats {
+                total: 0,
+                open: 0,
+                investigating: 0,
+                resolved: 0,
+                critical: 0,
+                high: 0,
+                medium: 0,
+                low: 0,
+            },
+            queries: vec![],
+            db: db_info(),
+            now: "1400Z".into(),
+            cc: platform(""),
+        }
+        .render()
+        .unwrap();
+        assert!(html.contains("Ciel dégagé."));
+        assert!(html.contains("Aucun incident enregistré"));
+        assert!(!html.contains("NOTAM"));
+    }
+
+    #[test]
+    fn detail_page_offers_the_three_statuses_and_the_update() {
+        let html = DetailTemplate {
+            incident: incident(1, "checkout", "high", "resolved", 90),
+            queries: vec![],
+            db: db_info(),
+            update_sql: compact(db::UPDATE_STATUS_SQL),
+            cc: platform(""),
+        }
+        .render()
+        .unwrap();
+        for status in ["open", "investigating", "resolved"] {
+            assert!(html.contains(&format!(r#"name="status" value="{status}""#)));
+        }
+        assert!(
+            html.contains("approach__scene is-step-2"),
+            "resolved: landed"
+        );
+        assert!(html.contains("UPDATE incidents SET status = $1, updated_at = NOW() WHERE id = $2"));
+    }
 }

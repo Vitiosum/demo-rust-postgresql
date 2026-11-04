@@ -4,44 +4,45 @@
 {% block nav_stats %} is-active{% endblock %}
 
 {% block content %}
-<section class="cc-section">
-  <div class="cc-container">
-    <div class="cc-reveal" style="--i:0">
-      <h1 class="it-stats-total">{{ stats.total }} incident{% if stats.total > 1 %}s{% endif %} enregistré{% if stats.total > 1 %}s{% endif %}.</h1>
-      <p class="cc-muted cc-mt-1">Comptés par PostgreSQL (<span class="cc-kbd">COUNT … FILTER</span>) à chaque requête.</p>
+<div class="tower">
+  <div class="cc-container tower__wrap">
+    <h1 class="tower__title tower__title--page">{{ stats.total }} incident{% if stats.total > 1 %}s{% endif %} enregistré{% if stats.total > 1 %}s{% endif %}.</h1>
+    <p class="tower__lead">Le bilan de trafic de la tour, compté par PostgreSQL en une seule requête (<span class="cc-kbd">COUNT … FILTER</span>) à chaque chargement.</p>
+
+    <div class="traffic">
+      <section class="meter" aria-labelledby="by-status">
+        <h2 id="by-status">Par statut</h2>
+        <ul role="img" aria-label="{{ stats.open }} open, {{ stats.investigating }} investigating, {{ stats.resolved }} resolved">
+          <li class="is-open"><span>open <small>en approche</small></span><i style="--w:{{ stats.pct(stats.open) }}%"></i><b>{{ stats.open }}</b></li>
+          <li class="is-investigating"><span>investigating <small>guidés vers la piste</small></span><i style="--w:{{ stats.pct(stats.investigating) }}%"></i><b>{{ stats.investigating }}</b></li>
+          <li class="is-resolved"><span>resolved <small>posés</small></span><i style="--w:{{ stats.pct(stats.resolved) }}%"></i><b>{{ stats.resolved }}</b></li>
+        </ul>
+      </section>
+      <section class="meter" aria-labelledby="by-severity">
+        <h2 id="by-severity">Par sévérité</h2>
+        <ul role="img" aria-label="{{ stats.critical }} critical, {{ stats.high }} high, {{ stats.medium }} medium, {{ stats.low }} low">
+          <li class="is-critical"><span>critical</span><i style="--w:{{ stats.pct(stats.critical) }}%"></i><b>{{ stats.critical }}</b></li>
+          <li class="is-high"><span>high</span><i style="--w:{{ stats.pct(stats.high) }}%"></i><b>{{ stats.high }}</b></li>
+          <li class="is-medium"><span>medium</span><i style="--w:{{ stats.pct(stats.medium) }}%"></i><b>{{ stats.medium }}</b></li>
+          <li class="is-low"><span>low</span><i style="--w:{{ stats.pct(stats.low) }}%"></i><b>{{ stats.low }}</b></li>
+        </ul>
+      </section>
     </div>
 
-    <div class="cc-card cc-card--pad cc-mt-3 cc-reveal" style="--i:1">
-      <h2 class="cc-card__title">Par statut</h2>
-      <div class="it-split" role="img" aria-label="{{ stats.open }} open, {{ stats.investigating }} investigating, {{ stats.resolved }} resolved">
-        <span class="is-open" style="width: {{ stats.pct(stats.open) }}%"></span><span class="is-investigating" style="width: {{ stats.pct(stats.investigating) }}%"></span><span class="is-resolved" style="flex: 1"></span>
-      </div>
-      <div class="it-legend">
-        <div class="is-open"><b>{{ stats.open }}</b><span>open, à prendre en charge</span></div>
-        <div class="is-investigating"><b>{{ stats.investigating }}</b><span>investigating, en analyse</span></div>
-        <div class="is-resolved"><b>{{ stats.resolved }}</b><span>resolved, clôturés</span></div>
-      </div>
-    </div>
-
-    <div class="cc-card cc-card--pad cc-mt-2 cc-reveal" style="--i:2">
-      <h2 class="cc-card__title">Par sévérité</h2>
-      <div class="it-split" role="img" aria-label="{{ stats.critical }} critical, {{ stats.high }} high, {{ stats.medium }} medium, {{ stats.low }} low">
-        <span class="is-critical" style="width: {{ stats.pct(stats.critical) }}%"></span><span class="is-high" style="width: {{ stats.pct(stats.high) }}%"></span><span class="is-medium" style="width: {{ stats.pct(stats.medium) }}%"></span><span class="is-low" style="flex: 1"></span>
-      </div>
-      <div class="it-legend">
-        <div class="is-critical"><b>{{ stats.critical }}</b><span>critical</span></div>
-        <div class="is-high"><b>{{ stats.high }}</b><span>high</span></div>
-        <div class="is-medium"><b>{{ stats.medium }}</b><span>medium</span></div>
-        <div class="is-low"><b>{{ stats.low }}</b><span>low</span></div>
-      </div>
-    </div>
-
-    <div class="cc-mt-3 stats-platform">
+    <div class="tower__desk">
+      <section class="console" aria-labelledby="console-title">
+        <div class="console__head"><h2 id="console-title">Console du contrôleur</h2><span>PostgreSQL {{ db.version }}</span></div>
+        <p class="console__intro">Une requête, huit compteurs :</p>
+{% include "partials/console-log.html" %}
+      </section>
+      <div class="tower__side">
 {% include "partials/cc-platform.html" %}
+      </div>
     </div>
-    <style>.stats-platform .cc-kv { grid-template-columns: repeat(3, minmax(0, 1fr)); } @media (max-width: 640px) { .stats-platform .cc-kv { grid-template-columns: 1fr; } }</style>
-
-{% include "partials/cert.html" %}
   </div>
-</section>
+</div>
+
+<div class="cc-container licence-wrap">
+{% include "partials/cert.html" %}
+</div>
 {% endblock %}
