@@ -1,167 +1,132 @@
 # Incident Tracker — Rust + PostgreSQL on Clever Cloud
 
-> A Rust (Axum) incident management app connected to PostgreSQL, built for Clever Cloud's **native Rust runtime** (no Docker image, no Dockerfile). Demonstrates async Rust web development with automatic database migrations — dressed with the **Clever Brand Kit** and putting the **Clever Cloud certification** front and center.
+> An on-call incident board: the first screen counts the incidents in progress, draws one bar per incident by severity, and flags the critical and high ones still open past their SLA. Declare an incident, move it from open to investigating to resolved: every change is a row in the **PostgreSQL add-on**. The app is a single Axum + SQLx binary that the **native Rust runtime** compiles with `cargo build --release --locked` on a dedicated build instance, with no Dockerfile; the schema is migrated at startup and the deployment is validated by a health check that queries PostgreSQL.
+
+![Incident Tracker run locally: five incidents in progress, the severity bars and the deployment console with the demo variables](docs/screenshot-desktop.png)
+
+![The incident list: severity, status, service, age and the "SLA dépassé" flag on the critical and high incidents still open](docs/screenshot-incidents.png)
+
+<img src="docs/screenshot-phone.png" alt="Incident Tracker on a phone: the incident count and the severity bars" width="300">
+
+**Run it yourself.** The hosted demo was taken down after the presales review (November 2026). The steps in [Deploy on Clever Cloud](#deploy-on-clever-cloud) recreate it from scratch in about 5 minutes.
+
+---
+
+## What the Rust runtime does here
+
+| Where | Clever Cloud feature | What you see |
+|---|---|---|
+| Build | Native Rust runtime: `cargo build --release --locked` against the committed `Cargo.lock`, on a dedicated M build instance | Measured deploys: 128 s with no cache, about 80 s once the dependency cache (`CC_CACHE_DEPENDENCIES`) is reused, 35 s for a variable change and `clever restart` (no build) |
+| Start-up | The binary listens on `0.0.0.0:$PORT` and runs `sqlx::migrate!()` before serving | No migration step in the deployment: the `incidents` table is created by the app, which starts in under 100 ms |
+| Deployment check | `CC_HEALTH_CHECK_PATH=/health`: `SELECT 1` on PostgreSQL, 200 or 503 | A deployment that cannot reach the database never takes the traffic |
+| PostgreSQL add-on | `POSTGRESQL_ADDON_URI`, injected by the linked add-on and read directly; pool of `DB_POOL_MAX` connections | Board, list sorted by status then severity, filters (`?status=`), `/stats` |
+| Environment variables | `APP_ENV`, `TEAM_NAME`, `SLA_CRITICAL_MINUTES`, `ANNOUNCEMENT`, set in the Console | Environment pill, on-call team, "SLA dépassé" flags, banner on every page. Change one, `clever restart`, reload |
+| Platform variables | `CC_APP_NAME`, `APP_ID`, `INSTANCE_NUMBER`, `INSTANCE_TYPE`, `CC_PRETTY_INSTANCE_NAME`, `CC_COMMIT_ID`, `CC_DEPLOYMENT_ID` | Shown in the deployment console of the first screen; "Local · hors Clever Cloud" outside the platform |
+| Redeploy | SIGTERM handled: in-flight requests drained, pool closed | In-flight requests finish before the old instance stops |
+
+The steps listed at the top of the deployment console (`git push`, `cargo build`, `sqlx migrate`, `GET /health`) are fixed text; the incident count under them, the variables and the platform values are read live.
 
 ---
 
 ## Deploy on Clever Cloud
 
-1. Fork this repository
-2. In the Clever Cloud console, create a new **Rust** application — connect your forked repo
-3. **Before the first deploy**, in the app's *Scalability* tab:
-   - enable the **dedicated build instance** (size **M**) — it is **disabled by default**. Without it, `cargo build` runs on the small app instance, pins its CPU at 100 % and the deployment stalls;
-   - enable **auto-scalability**: size **nano → XS**, **1 → 2** instances.
-4. Add a **PostgreSQL** add-on on the **XXS Small Space** plan (`xxs_sml`, the smallest dedicated plan) with **encryption at rest** enabled, and link it to your app. Encryption can only be chosen when the add-on is created; the shared DEV plan offers neither encryption nor more than 5 connections. The app reads `POSTGRESQL_ADDON_URI` directly, **do not** copy it into `DATABASE_URL`.
-5. Recommended environment variables (console or `clever env set`):
-   - `DB_POOL_MAX=2` — pool size; keep `DB_POOL_MAX × instances` below the add-on's connection limit (`xxs_sml` = 45: 2 instances, doubled during a redeploy, × 2 = 8)
-   - `RUST_LOG=incident_tracker=info,tower_http=info` (already the built-in default)
-   - `CC_HEALTH_CHECK_PATH=/health` — the platform validates the deployment against PostgreSQL
-   - `CC_CACHE_DEPENDENCIES=true` — reuses `target/` and the cargo registry between deployments (much shorter builds)
-   - Optional: `CC_RUSTUP_CHANNEL=1.94.0` pins the toolchain (default `stable`; `CC_RUST_VERSION` does not exist)
-   - Demo variables, read by the app and visible on screen: `APP_ENV`, `TEAM_NAME`, `SLA_CRITICAL_MINUTES`, `ANNOUNCEMENT` (see CLAUDE.md)
-6. Push → Clever Cloud builds with `cargo build --release --locked` and deploys automatically
-
-### Same thing with clever-tools
+You need [clever-tools](https://www.clever.cloud/developers/doc/cli/) (`clever login` done) and the ID of the organisation that will own the resources (`orga_…`, shown in the Console). Run the commands from the repo root: `clever create` links the folder to the new app.
 
 ```bash
-clever create --type rust demo-rust-postgresql
-clever scale --build-flavor M
+# 1. The app and its size (fixed nano first, then the range; the dedicated build is off by default)
+clever create --type rust demo-rust-postgresql --org <org_id> --region par
 clever scale --flavor nano
 clever scale --min-flavor nano --max-flavor XS --min-instances 1 --max-instances 2
-clever addon create postgresql-addon demo-rust-db --plan xxs_sml --option encryption=true --link demo-rust-postgresql --yes
-clever env set CC_HEALTH_CHECK_PATH /health
+clever scale --build-flavor M
+
+# 2. PostgreSQL (dedicated xxs_sml, encrypted at rest), linked to the app
+clever addon create postgresql-addon demo-rust-db --plan xxs_sml --option encryption=true --region par --org <org_id> --yes
+clever service link-addon demo-rust-db
+
+# 3. Variables
 clever env set DB_POOL_MAX 2
+clever env set CC_HEALTH_CHECK_PATH /health
 clever env set CC_CACHE_DEPENDENCIES true
+clever env set CC_IGNORE_FROM_BUILDCACHE target/release/deps:target/release/build:target/release/.fingerprint:target/release/incremental
+
+# 4. Deploy
 clever deploy
+clever open
+
+# 5. Optional: the nine demo incidents (needs psql; reads the add-on URI with clever env, never prints it)
+./scripts/reset-demo.sh
 ```
 
-`clever create` leaves the dedicated build disabled too: run `clever scale --build-flavor M` **before** `clever deploy`, and check that `clever status` shows `Dedicated build: M`. The build instance is only billed while a build runs. Set the fixed `nano` size before the auto-scalability range: `--min-flavor` alone does not shrink an instance that already runs at XS. After the deploy, `clever status` should show `running (1*nano)`, `Scalers: 1 to 2`, `Sizes: nano to XS`. An app created this way deploys from its Clever Cloud git remote: redeploy with `clever deploy`, a push to GitHub does not trigger it.
+Turn the dedicated build on **before** the first `clever deploy` and check that `clever status` shows `Dedicated build: M`: without it, `cargo build` runs on the nano/XS app instance, pins its CPU at 100 % and the deployment stalls. The build instance is only billed while a build runs. Set the fixed `nano` size before the range: `--min-flavor` alone does not shrink an instance that already runs at XS. After the deploy, `clever status` shows `running (1*nano)`, `Scalers: 1 to 2`, `Sizes: nano to XS`.
 
-To move an existing app from a DEV database to an encrypted one: create the `xxs_sml` add-on with `--option encryption=true`, unlink the DEV add-on (`clever service unlink-addon <id>`), link the new one (`clever service link-addon <id>`), then `clever restart` — the migrations recreate the schema at startup (data is not copied).
+The add-on must be linked before the first deploy: without a PostgreSQL URI the app exits at startup. Encryption at rest can only be chosen when the add-on is created, and the DEV plan offers neither encryption nor more than 5 connections. `xxs_sml` keeps daily backups (7 retained).
 
-> **Build time:** ~1–2 minutes on the dedicated M build instance (measured: 1 min 16 s for a first build). Subsequent deploys reuse the build cache.
+`scripts/reset-demo.sh` truncates the table and loads `scripts/demo-seed.sql`, with dates relative to now: 3 open, 2 investigating, 4 resolved, 3 flagged "SLA dépassé" with the default 30 minutes. Run it again just before a demo so the ages start from the present.
 
----
+An app created this way deploys from its Clever Cloud git remote: redeploy with `clever deploy`, a push to GitHub does not trigger it.
 
-## Stack
+## Variables
 
-| Layer         | Technology          |
-|---------------|---------------------|
-| Language      | Rust (edition 2021) |
-| Web framework | Axum 0.8            |
-| Async runtime | Tokio               |
-| Database      | PostgreSQL          |
-| DB access     | SQLx 0.8            |
-| Templates     | Askama 0.12         |
-| Design        | Clever Brand Kit (Plus Jakarta Sans, navy #13172e, dégradé Clever) |
+| Variable | Set by | Role |
+|---|---|---|
+| `POSTGRESQL_ADDON_URI` | PostgreSQL add-on (linked) | Connection string, read directly when `DATABASE_URL` is absent. Do not copy it into `DATABASE_URL` |
+| `PORT` | Clever Cloud | Listening port (8080, also the local default) |
+| `DB_POOL_MAX` | you | Pool size, default 2. Keep `DB_POOL_MAX × instances` below the add-on limit (`xxs_sml` = 45): a redeploy briefly doubles the instances, 4 × 2 = 8 |
+| `CC_HEALTH_CHECK_PATH` | you | `/health`: the platform validates the deployment against PostgreSQL |
+| `CC_CACHE_DEPENDENCIES` | you | `true`: reuses `target/` and the cargo registry between builds |
+| `CC_IGNORE_FROM_BUILDCACHE` | you | Leaves the intermediate build files out of the build cache archive: the binary is enough to run |
+| `CC_RUSTUP_CHANNEL` | optional | Pins the toolchain (default `stable`, e.g. `1.94.0`). `CC_RUST_VERSION` does not exist |
+| `RUST_LOG` | optional | Log filter, default `incident_tracker=info,tower_http=info` |
+| `APP_ENV` | optional, demo | Environment pill in the deployment console, Clever gradient when `production`. Default `local` |
+| `TEAM_NAME` | optional, demo | "Astreinte : …" under the title. Default `Équipe SRE` |
+| `SLA_CRITICAL_MINUTES` | optional, demo | Critical and high incidents still unresolved after this many minutes are flagged "SLA dépassé". Default `30` |
+| `ANNOUNCEMENT` | optional, demo | Banner on every page when set |
+| `DATABASE_URL` | you, local only | PostgreSQL connection string for a local run, takes precedence when set |
 
----
+The deployment console shows `CC_APP_NAME`, `APP_ID`, `INSTANCE_NUMBER`, `INSTANCE_TYPE`, `CC_PRETTY_INSTANCE_NAME`, `CC_COMMIT_ID` (7 characters) and `CC_DEPLOYMENT_ID` (16 characters), and nothing else.
 
-## Features
+## Routes
 
-- List, create, and update incidents
-- Filter by status: open / investigating / resolved (`?status=`)
-- Severity levels: low / medium / high / critical
-- Automatic database migrations at startup (`sqlx::migrate!()`)
-- `/health` endpoint — 200 when PostgreSQL answers `SELECT 1`, 503 otherwise
-- Server-side validation: title ≤ 255, service ≤ 100, description ≤ 10 000 characters (form error, never a 500)
-- Security headers on every response (`X-Content-Type-Options`, `Referrer-Policy`, `X-Frame-Options`, `Content-Security-Policy`) — TLS/HSTS stay on the Clever Cloud proxy
-- Graceful shutdown on SIGTERM/Ctrl+C (in-flight requests drained, pool closed)
-- `/stats` page with incident counts
-- **« Vu depuis Clever Cloud » panel**: shows the variables the platform injects (`CC_APP_NAME`, `APP_ID`, `INSTANCE_NUMBER`, `INSTANCE_TYPE`, `CC_PRETTY_INSTANCE_NAME`, `CC_COMMIT_ID`, `CC_DEPLOYMENT_ID`) — displays « Local · hors Clever Cloud » when running outside the platform
+| Method | Path | What it does |
+|---|---|---|
+| GET | `/` | Board and incident list (`?status=open`, `investigating` or `resolved`) |
+| GET | `/incidents/new` | Form to declare an incident |
+| POST | `/incidents` | Creates an incident (title ≤ 255, service ≤ 100, description ≤ 10 000 characters: a form error, never a 500) |
+| GET | `/incidents/{id}` | Incident detail |
+| POST | `/incidents/{id}/status` | Moves the incident to `open`, `investigating` or `resolved` |
+| GET | `/stats` | Counts by status and severity |
+| GET | `/health` | 200 when PostgreSQL answers `SELECT 1`, 503 otherwise |
+| GET | `/cc-brand.css` | Clever Brand Kit stylesheet, embedded in the binary |
 
----
+There is no delete. Every response carries `X-Content-Type-Options`, `Referrer-Policy`, `X-Frame-Options` and a `Content-Security-Policy`; TLS and HSTS stay on the Clever Cloud proxy.
 
-## Design — Clever Brand Kit
+## Code tour
 
-The UI uses the shared **Clever Brand Kit**: a single stylesheet (`static/cc-brand.css`, tokens `--cc-*`, Plus Jakarta Sans + JetBrains Mono via Google Fonts with system fallbacks), the official Clever Cloud logo and the certification badge inlined as Askama partials (`templates/partials/`). No dependency was added: the CSS is embedded in the binary with `include_str!` and served on `/cc-brand.css`.
+```
+src/main.rs              config, pool, migrations, router, security headers, graceful shutdown
+src/handlers.rs          HTTP handlers, form validation, Askama templates
+src/db.rs                SQLx queries: list (sorted by status then severity), create, update status, stats
+src/models.rs            Incident (age, SLA check), Stats, Platform (injected and demo variables)
+migrations/              0001_create_incidents.sql: the incidents table, run by sqlx::migrate!() at startup
+templates/               base (topbar, banner, footer), index, new, detail, stats; partials/ holds the
+                         Clever logo, the certification block and the platform panel
+static/cc-brand.css      Clever Brand Kit, copied as is and embedded with include_str!
+scripts/                 demo-seed.sql (9 incidents) and reset-demo.sh (reloads the linked add-on)
+clevercloud/rust.json    detected at build time ("Configuration file detected"); the Rust runtime itself
+                         is configured through environment variables
+```
 
-Page structure (video redesign, 2026-10): sticky topbar → incident board (live count, one bar per incident by severity, Clever Cloud deployment console with the injected platform variables) → incident list → **Clever Cloud Academy certification block** → footer. The certification is also pushed from the first screen (button), the detail page (compact card) and /stats. App-specific styles live in a short `<style>` block in `templates/base.html`; `cc-brand.css` is never edited.
+Axum 0.8, Tokio, SQLx 0.8 (PostgreSQL, rustls), Askama 0.12; Rust edition 2021, `rust-version` 1.85. Axum 0.8 path parameters use `{id}`: the former `:id` syntax panics at startup. The design follows `docs/superpowers/specs/2026-09-06-clever-brand-design.md`.
 
-Spec: `docs/superpowers/specs/2026-09-06-clever-brand-design.md`.
+## Run locally
 
----
-
-## Certification Clever Cloud
-
-The home page puts the **Clever Cloud Academy** certification right under the hero: the two official tracks (*Cloud Computing Fundamentals*, *Advanced Deployment*) and a call to action. Every page carries a « Se certifier ↗ » link in the topbar.
-
-→ **[academy.clever.cloud](https://academy.clever.cloud/)** — digital badges are issued automatically once a track is validated.
-
----
-
-## Local Development
-
-### Prerequisites
-
-- Rust (stable, 1.85+ — `rust-version` in `Cargo.toml`)
-- PostgreSQL running locally
-
-### Run
+Needs Rust 1.85+ and a local PostgreSQL.
 
 ```bash
-git clone https://github.com/Vitiosum/demo-rust-postgresql
-cd demo-rust-postgresql
-cp .env.example .env
-# Edit .env: set DATABASE_URL to your local PostgreSQL connection string
-cargo run
+createdb demo_rust
+DATABASE_URL=postgres://localhost/demo_rust PORT=8080 cargo run   # migrations run at startup
+psql postgres://localhost/demo_rust -f scripts/demo-seed.sql      # optional: the nine demo incidents
 # → http://localhost:8080
 ```
 
-One-liner without `.env`:
-
-```bash
-DATABASE_URL=postgres://localhost/demo_rust PORT=8082 cargo run
-```
-
----
-
-## Environment Variables
-
-| Variable       | Required | Description                                             |
-|----------------|----------|---------------------------------------------------------|
-| `POSTGRESQL_ADDON_URI` | ✅ (Clever) | Injected by the linked PostgreSQL add-on; read when `DATABASE_URL` is absent |
-| `DATABASE_URL` | ✅ (local) | PostgreSQL connection string for local runs (takes precedence if set) |
-| `PORT`         | auto     | Injected by Clever Cloud (default: 8080)                |
-| `DB_POOL_MAX`  | —        | Max pool connections (default: 2). Rule: `DB_POOL_MAX × instances ≤ add-on limit` (`xxs_sml` = 45, DEV = 5) |
-| `RUST_LOG`     | —        | Log filter (default: `incident_tracker=info,tower_http=info`) |
-| `CC_HEALTH_CHECK_PATH` | — (Clever) | Set to `/health` so the platform checks PostgreSQL before routing traffic |
-| `CC_CACHE_DEPENDENCIES` | — (Clever) | `true`: reuse `target/` and the cargo registry between builds |
-| `CC_IGNORE_FROM_BUILDCACHE` | — (Clever) | `target/release/deps:target/release/build:target/release/.fingerprint:target/release/incremental`: lighter build cache archive (measured deploys: 128 s cold → ~80 s with the dependency cache) |
-| `CC_RUSTUP_CHANNEL` | — (Clever) | Optional toolchain pin (default `stable`, e.g. `1.94.0`) |
-| `APP_ENV` | `local` | Demo: environment pill in the page console (gradient when `production`) |
-| `TEAM_NAME` | `Équipe SRE` | Demo: on-call team under the title |
-| `SLA_CRITICAL_MINUTES` | `30` | Demo: unresolved critical/high incidents older than this are flagged « SLA dépassé » |
-| `ANNOUNCEMENT` | — | Demo: banner on every page when set |
-| `CC_APP_NAME`, `APP_ID`, `INSTANCE_NUMBER`, `INSTANCE_TYPE`, `CC_PRETTY_INSTANCE_NAME`, `CC_COMMIT_ID`, `CC_DEPLOYMENT_ID` | auto | Injected by Clever Cloud, read-only, displayed in the platform panel |
-
----
-
-## Endpoints
-
-| Method | Path                      | Description                          |
-|--------|---------------------------|--------------------------------------|
-| GET    | `/`                       | List incidents (`?status=` filter)   |
-| GET    | `/incidents/new`          | Create form                          |
-| POST   | `/incidents`              | Create incident                      |
-| GET    | `/incidents/{id}`         | Incident detail                      |
-| POST   | `/incidents/{id}/status`  | Update status                        |
-| GET    | `/stats`                  | Statistics                           |
-| GET    | `/health`                 | Health check (200 if PostgreSQL answers, 503 otherwise) |
-| GET    | `/cc-brand.css`           | Clever Brand Kit stylesheet (embedded) |
-
-> **Axum 0.8 note:** path parameters use the `{id}` syntax. The former `:id` syntax makes Axum 0.8 **panic at startup** (`Path segments must not start with ':'`) — this was fixed in this repository.
-
----
-
-## Deployment Notes
-
-- The PostgreSQL add-on must be linked before the first deploy (`POSTGRESQL_ADDON_URI`) — the app exits at startup without it
-- Database: `xxs_sml` plan with encryption at rest (daily backups, 7 retained); encryption is chosen at creation only and the DEV plan does not offer it
-- Pool sizing: `DB_POOL_MAX` (default 2) × number of instances must stay below the add-on's connection limit — a redeploy briefly doubles the instances (up to 4 with a 2-instance max: 4 × 2 = 8 ≤ 45)
-- `clevercloud/rust.json` **is** picked up by the platform at build time (build log: `Configuration file detected: …/clevercloud/rust.json`); the Rust runtime itself is configured through environment variables — nothing indicates that its `appIsToBeBuilt` key changes the runtime's behaviour
-- Migrations are applied automatically at startup via `sqlx::migrate!()` — no manual migration step needed
-- The binary listens on `0.0.0.0:$PORT` as required by Clever Cloud
-- The dedicated build instance (M) must be enabled before the first deploy — it is disabled by default, and building on the nano/XS app instance stalls the deployment
-- Auto-scalability: nano → XS, 1 → 2 instances — enough for a demo, the Rust binary idles well within a nano instance
-- First build takes ~1–2 min on the dedicated M build instance — Clever Cloud caches compiled artifacts for subsequent deploys
+`cp .env.example .env` also works: the app reads a `.env` file when there is one (local only).
