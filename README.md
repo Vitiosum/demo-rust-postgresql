@@ -2,6 +2,8 @@
 
 > An approach radar for on-call incidents. Every open incident is an aircraft on a green phosphor scope: its severity sets its colour and its distance to the runway, a critical or high incident still open past its SLA blinks and squawks 7700, and "resolved" lands it on the runway. Beside the scope, each incident has its paper flight strip; under it, the controller's console prints the SQLx queries that drew the page, word for word as sent to the **PostgreSQL add-on**, with their bound values, row counts and timings. The app is a single Axum + SQLx binary that the **native Rust runtime** compiles with `cargo build --release --locked` on a dedicated build instance, with no Dockerfile; the schema is migrated at startup and the deployment is validated by a health check that queries PostgreSQL.
 
+![Animation, run locally: an incident is declared on a blank flight strip, appears on the radar as a sixth aircraft, then "resolved" lands it on the approach profile](docs/tour.gif)
+
 ![Control Tower run locally: five incidents in flight on the radar, three of them squawking 7700 past their SLA, the flight strips and a NOTAM banner set by ANNOUNCEMENT](docs/screenshot-desktop.png)
 
 ![An incident run locally: its flight strip with squawk 7700, the approach profile whose buttons change the status, and the controller console with the SELECT played and the UPDATE sent on click](docs/screenshot-incidents.png)

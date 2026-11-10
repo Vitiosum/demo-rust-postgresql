@@ -85,7 +85,8 @@ Avant un tournage : `./scripts/reset-demo.sh` recharge la base de l'app visée p
 - Chaque struct `#[derive(Template)]` reçoit `cc: Platform` (`models::Platform::from_env()`) ; dans les templates : `{% if cc.live %}`, `{{ cc.app_name }}`.
 - Couleurs : `--sev-*` (écran) et `--ink-*` (encre sur papier) dans `tower.css`, appliquées par `is-<severity>` (valeurs validées côté serveur). CSP sans script : tout reste en CSS (`prefers-reduced-motion` coupé par le kit).
 - Textes du chrome en français (espaces insécables avant `:` et dans « … ») ; libellés techniques (`open`, `critical`…) en anglais.
-- Captures du README : `docs/screenshot-desktop.png` (1440×900), `docs/screenshot-incidents.png` (détail, 1440×900), `docs/screenshot-phone.png` (390×844 @2x), prises avec Playwright, animations figées au même instant.
+- Captures du README : `docs/screenshot-desktop.png` (1440×900), `docs/screenshot-incidents.png` (détail, 1440×900), `docs/screenshot-phone.png` (390×844 @2x), prises avec Playwright, animations figées au même instant. Animation `docs/tour.gif` (800×500, 10 s, moins de 1,5 Mo exigé par `scripts/check-catalogue.sh`) : déclaration d'un incident, apparition sur le radar, atterrissage en `resolved`.
+- En-tête, NOTAM et pied de page sont élargis à 1320px dans `tower.css` pour s'aligner sur la salle de contrôle. Sur le radar, le bloc d'un plot `investigating` se place du côté opposé à la piste (son vecteur ne le barre pas).
 
 ---
 
@@ -96,7 +97,7 @@ src/main.rs        → entry point, config Axum, routes dans app() (+ /cc-brand.
 src/handlers.rs    → handlers HTTP (CRUD incidents), requêtes chronométrées pour la console, structs de templates
 src/models.rs      → Incident (indicatif, squawk, SLA), Radar (géométrie des plots), QueryLog, DbInfo, Platform
 src/db.rs          → SQL en constantes, requêtes SQLx, version PostgreSQL, état du pool
-templates/         → templates HTML Askama (base, index, new, detail, stats)
+templates/         → templates HTML Askama (base, index, new, detail, stats, not_found : page 404 d'un incident inconnu, dans le cadre de la tour)
 templates/partials/ → radar, console-log, atis, cc-platform, cert (licence), cert-mini, SVG logo et badge
 static/cc-brand.css → Clever Brand Kit (copie, ne pas modifier)
 static/tower.css   → univers Tour de contrôle (tous les styles propres à la démo)

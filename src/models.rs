@@ -224,7 +224,15 @@ impl Radar {
                 } else {
                     (x, y)
                 };
-                let left = f64::from(x) > c + 150.0;
+                // The data block sits on the right, or on the left near the right edge.
+                // An investigating plot carries a heading vector towards the runway: its block
+                // goes on the side away from the centre, so the vector never strikes it through.
+                let dx = f64::from(x) - c;
+                let left = if inc.status == "investigating" && dx.abs() <= 200.0 {
+                    dx < 0.0
+                } else {
+                    dx > 150.0
+                };
                 let lx = if left { x - 16 } else { x + 16 };
                 // Near the bottom of the scope the data block sits above the plot.
                 let low = f64::from(y) > c + 210.0;

@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block title %}Vol inconnu{% endblock %}
+
+{% block content %}
+<div class="tower">
+  <div class="cc-container tower__wrap lost">
+    <p class="tower__team">Squawk introuvable</p>
+    <h1 class="tower__title tower__title--page">Aucun vol à cet indicatif.</h1>
+    <p class="tower__lead">PostgreSQL ne connaît pas cet incident : l'identifiant ne correspond à aucune ligne de la table <span class="cc-kbd">incidents</span>.</p>
+    <div class="tower__cta">
+      <a class="cc-btn cc-btn--gradient" href="/">Retour au radar</a>
+      <a class="cc-btn" href="/incidents/new">Déclarer un incident</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

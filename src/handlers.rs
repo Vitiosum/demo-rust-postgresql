@@ -50,7 +50,14 @@ impl IntoResponse for AppError {
                 tracing::error!("Database error: {e}");
                 (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error").into_response()
             }
-            AppError::NotFound => (StatusCode::NOT_FOUND, "Incident not found").into_response(),
+            // Same status as before, with the tower around it instead of a bare line of text.
+            AppError::NotFound => (
+                StatusCode::NOT_FOUND,
+                HtmlTemplate(NotFoundTemplate {
+                    cc: Platform::from_env(),
+                }),
+            )
+                .into_response(),
             AppError::BadRequest(msg) => (StatusCode::BAD_REQUEST, msg).into_response(),
         }
     }
@@ -107,6 +114,12 @@ struct StatsTemplate {
     stats: Stats,
     queries: Vec<QueryLog>,
     db: DbInfo,
+    cc: Platform,
+}
+
+#[derive(Template)]
+#[template(path = "not_found.html")]
+struct NotFoundTemplate {
     cc: Platform,
 }
 
